@@ -1,159 +1,192 @@
 <?php
 namespace FriendsOfRedaxo\AssetImport\Asset;
 
-use FriendsOfRedaxo\AssetImport\Provider\ProviderInterface;
+use Psr\Log\LogLevel;
 
 abstract class AbstractProvider implements ProviderInterface
 {
     protected array $config = [];
+    protected $mediaCategories = [];
+
+    /**
+     * Cache Lifetime in Seconds (24 hours)
+     */
+    protected const CACHE_LIFETIME = 86400;
 
     public function __construct()
-    {
-        $this->loadConfig();
-    }
-
-    protected function loadConfig(): void
     {
         $this->config = \rex_addon::get('asset_import')->getConfig($this->getName()) ?? [];
     }
 
-    protected function saveConfig(array $config): void
+    public function setConfig(array $config): void
     {
-        \rex_addon::get('asset_import')->setConfig($this->getName(), $config);
+        $this->config = $config;
     }
 
-    public function getDefaultOptions(): array 
+    protected function getConfig(string $key)
     {
-        return [];
+        return $this->config[$key] ?? null;
     }
 
     public function search(string $query, int $page = 1, array $options = []): array
     {
-        $cacheKey = $this->buildCacheKey($query, $page, $options);
-        $cachedResult = $this->getCachedResponse($cacheKey);
+        // Bereinige abgelaufene Cache-Einträge
+        $this->cleanupCache();
 
-        if ($cachedResult !== null) {
-            return $cachedResult;
+        // Cache-Key generieren
+        $cacheKey = md5($query . serialize($options) . $page);
+
+        // Prüfe Cache
+        if ($cachedData = $this->getFromCache($cacheKey)) {
+            return $cachedData;
         }
 
-        $result = $this->searchApi($query, $page, $options);
-        $this->cacheResponse($cacheKey, $result);
+        // API abfragen
+        $results = $this->searchApi($query, $page, $options);
 
-        return $result;
+        // Speichere im Cache
+        $this->saveToCache($cacheKey, $results);
+
+        return $results;
     }
 
-    abstract protected function searchApi(string $query, int $page = 1, array $options = []): array;
-
-    protected function buildCacheKey(string $query, int $page, array $options): string
+    /**
+     * Bereinigt den Cache von alten Einträgen für alle Provider
+     */
+    protected function cleanupCache(): void
     {
-        return md5($this->getName() . $query . $page . serialize($options));
-    }
-
-    protected function getCachedResponse(string $cacheKey): ?array
-    {
-        $sql = \rex_sql::factory();
-        $sql->setQuery('
-            SELECT response 
-            FROM ' . \rex::getTable('asset_import_cache') . '
-            WHERE provider = :provider 
-            AND cache_key = :cache_key
-            AND valid_until > NOW()',
-            [
-                'provider' => $this->getName(),
-                'cache_key' => $cacheKey
-            ]
-        );
-        
-        if ($sql->getRows() > 0) {
-            return json_decode($sql->getValue('response'), true);
+        try {
+            $sql = \rex_sql::factory();
+            
+            // Lösche abgelaufene Einträge
+            $sql->setQuery('DELETE FROM ' . \rex::getTable('asset_import_cache') . ' WHERE valid_until < NOW()');
+            
+            $deletedRows = $sql->getRows();
+            
+            if ($deletedRows > 0) {
+                \rex_logger::factory()->log(
+                    LogLevel::INFO,
+                    'Cleaned up {count} expired cache entries',
+                    ['count' => $deletedRows],
+                    __FILE__,
+                    __LINE__
+                );
+            }
+        } catch (\Exception $e) {
+            \rex_logger::factory()->log(
+                LogLevel::ERROR,
+                'Error cleaning up cache: {message}',
+                ['message' => $e->getMessage()],
+                __FILE__,
+                __LINE__
+            );
         }
-        
+    }
+
+    protected function getFromCache(string $key): ?array
+    {
+        try {
+            $sql = \rex_sql::factory();
+            $sql->setQuery(
+                'SELECT response FROM ' . \rex::getTable('asset_import_cache') . ' 
+                WHERE provider = :provider 
+                AND cache_key = :key 
+                AND valid_until > NOW()',
+                [
+                    'provider' => $this->getName(),
+                    'key' => $key
+                ]
+            );
+
+            if ($sql->getRows() === 1) {
+                return json_decode($sql->getValue('response'), true);
+            }
+        } catch (\Exception $e) {
+            \rex_logger::factory()->log(LogLevel::ERROR, 'Cache read error: {message}', ['message' => $e->getMessage()], __FILE__, __LINE__);
+        }
+
         return null;
     }
 
-    protected function cacheResponse(string $cacheKey, array $response): void
+    protected function saveToCache(string $key, array $data): void
     {
-        // Alte Cache-Einträge löschen
-        $sql = \rex_sql::factory();
-        $sql->setQuery('
-            DELETE FROM ' . \rex::getTable('asset_import_cache') . '
-            WHERE provider = :provider 
-            AND (valid_until < NOW() OR cache_key = :cache_key)',
-            [
-                'provider' => $this->getName(),
-                'cache_key' => $cacheKey
-            ]
-        );
-
-        // Neuen Cache-Eintrag erstellen
-        $sql = \rex_sql::factory();
-        $sql->setTable(\rex::getTable('asset_import_cache'));
-        $sql->setValue('provider', $this->getName());
-        $sql->setValue('cache_key', $cacheKey);
-        $sql->setValue('response', json_encode($response));
-        $sql->setValue('created', date('Y-m-d H:i:s'));
-        $sql->setValue('valid_until', date('Y-m-d H:i:s', strtotime('+24 hours')));
-        $sql->insert();
-    }
-
-    protected function sanitizeFilename(string $filename): string
-    {
-        $filename = mb_convert_encoding($filename, 'UTF-8', 'auto');
-        $filename = \rex_string::normalize($filename);
-        $filename = preg_replace('/[^a-zA-Z0-9_-]/', '_', $filename);
-        return trim($filename, '_');
+        try {
+            $sql = \rex_sql::factory();
+            $sql->setTable(\rex::getTable('asset_import_cache'));
+            $sql->setValue('provider', $this->getName());
+            $sql->setValue('cache_key', $key);
+            $sql->setValue('response', json_encode($data));
+            $sql->setValue('created', date('Y-m-d H:i:s'));
+            $sql->setValue('valid_until', date('Y-m-d H:i:s', time() + self::CACHE_LIFETIME));
+            $sql->insert();
+        } catch (\Exception $e) {
+            \rex_logger::factory()->log(LogLevel::ERROR, 'Cache write error: {message}', ['message' => $e->getMessage()], __FILE__, __LINE__);
+        }
     }
 
     protected function downloadFile(string $url, string $filename): bool
     {
         try {
-            $tmpFile = \rex_path::cache('asset_import_' . uniqid() . '_' . $filename);
-            
             $ch = curl_init($url);
-            $fp = fopen($tmpFile, 'wb');
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 30);
             
-            curl_setopt_array($ch, [
-                CURLOPT_FILE => $fp,
-                CURLOPT_HEADER => 0,
-                CURLOPT_FOLLOWLOCATION => true,
-                CURLOPT_TIMEOUT => 60,
-                CURLOPT_SSL_VERIFYPEER => true
-            ]);
+            $data = curl_exec($ch);
             
-            $success = curl_exec($ch);
-            
-            if (curl_errno($ch)) {
-                throw new \Exception(curl_error($ch));
+            if ($data === false) {
+                throw new \Exception('Download failed: ' . curl_error($ch));
             }
             
             curl_close($ch);
-            fclose($fp);
             
-            if ($success) {
-                $media = [
-                    'title' => pathinfo($filename, PATHINFO_FILENAME),
-                    'file' => [
-                        'name' => $filename,
-                        'path' => $tmpFile,
-                        'tmp_name' => $tmpFile
-                    ],
-                    'category_id' => \rex_post('category_id', 'int', 0)
-                ];
-                
-                $result = \rex_media_service::addMedia($media, true);
-                unlink($tmpFile);
-                
-                return $result !== false;
+            // Prepare media category
+            $categoryId = \rex_request('category_id', 'int', 0);
+
+            // Create media
+            $media = \rex_media::get($filename);
+            if ($media) {
+                $filename = $this->generateUniqueFilename($filename);
             }
-            
-            return false;
-            
+
+            $path = \rex_path::media($filename);
+            if (file_put_contents($path, $data)) {
+                \rex_media_service::mediaUpdated($filename, $filename, $categoryId);
+                return true;
+            }
         } catch (\Exception $e) {
-            \rex_logger::logException($e);
-            if (file_exists($tmpFile)) {
-                unlink($tmpFile);
-            }
-            return false;
+            \rex_logger::factory()->log(LogLevel::ERROR, 'Download error: {message}', ['message' => $e->getMessage()], __FILE__, __LINE__);
         }
+
+        return false;
     }
+
+    protected function sanitizeFilename(string $filename): string
+    {
+        $filename = strtolower($filename);
+        $filename = str_replace(['ä', 'ö', 'ü', 'ß'], ['ae', 'oe', 'ue', 'ss'], $filename);
+        $filename = preg_replace('/[^a-z0-9\-_]/', '_', $filename);
+        $filename = preg_replace('/_{2,}/', '_', $filename);
+        $filename = trim($filename, '_');
+        return $filename;
+    }
+
+    protected function generateUniqueFilename(string $filename): string
+    {
+        $pathInfo = pathinfo($filename);
+        $basename = $pathInfo['filename'];
+        $extension = $pathInfo['extension'] ?? '';
+        
+        $counter = 1;
+        $newFilename = $filename;
+        
+        while (file_exists(\rex_path::media($newFilename))) {
+            $newFilename = $basename . '_' . $counter . '.' . $extension;
+            $counter++;
+        }
+        
+        return $newFilename;
+    }
+
+    abstract protected function searchApi(string $query, int $page = 1, array $options = []): array;
 }
