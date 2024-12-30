@@ -58,7 +58,7 @@ Die abstrakte Klasse `AbstractProvider` bietet bereits:
 - Konfigurationsverwaltung
 
 
-## Beispiel Provider für REDAXO Asset Import AddOn
+## Beispiel Provider für File import aus lokalem Ordner
 
 ### Was macht der Provider?
 
