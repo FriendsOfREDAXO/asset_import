@@ -14,7 +14,7 @@ $cats_sel->setStyle('class="form-control"');
 $cats_sel->setName('category_id');
 $cats_sel->setId('rex-mediapool-category');
 $cats_sel->setSize(1);
-$cats_sel->setAttribute('class', 'form-control');
+$cats_sel->setAttribute('class', 'form-control selectpicker');
 
 $content = '
 <div class="asset-import-container">
@@ -44,7 +44,7 @@ $content = '
                         <form id="asset-import-search-form">
                             <div class="row">
                                 <div class="col-sm-3">
-                                    <select name="provider" class="form-control" id="asset-import-provider">';
+                                    <select name="provider" class="form-control selectpicker" id="asset-import-provider">';
                                     
 foreach ($providers as $id => $class) {
     $provider = new $class();
@@ -71,7 +71,7 @@ $content .= '
                                     </div>
                                 </div>
                                 <div class="col-sm-2">
-                                    <select name="type" class="form-control" id="asset-import-type">
+                                    <select name="type" class="form-control selectpicker" id="asset-import-type">
                                         <option value="all">' . \rex_i18n::msg('asset_import_type_all') . '</option>
                                         <option value="image">' . \rex_i18n::msg('asset_import_type_image') . '</option>
                                         <option value="video">' . \rex_i18n::msg('asset_import_type_video') . '</option>
