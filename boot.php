@@ -1,8 +1,15 @@
 <?php
 namespace FriendsOfRedaxo\AssetImport;
 
-// Automatisch Provider aus dem Namespace registrieren
-AssetImporter::registerProvidersFromNamespace('FriendsOfRedaxo\AssetImport\Provider');
+// Start session für CSRF-Protection
+if (rex_backend_login::hasSession()) {
+    rex_csrf_token::factory('asset_import');
+}
+
+// Registriere Basis-Provider
+if(class_exists('\FriendsOfRedaxo\AssetImport\Provider\PixabayProvider')) {
+    AssetImporter::registerProvider('\FriendsOfRedaxo\AssetImport\Provider\PixabayProvider');
+}
 
 // Nur im Backend ausführen
 if (\rex::isBackend() && \rex::getUser()) {
