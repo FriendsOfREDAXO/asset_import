@@ -104,7 +104,7 @@ $(document).on('rex:ready', function() {
                         </div>
                         <div class="asset-import-info">
                             <div class="asset-import-title">${item.title}</div>
-                            <select class="form-control asset-import-size-select">
+                            <select class="form-control selectpicker asset-import-size-select">
                                 ${Object.entries(item.size).map(([key, value]) => `
                                     <option value="${key}" data-url="${value.url}">
                                         ${key.charAt(0).toUpperCase() + key.slice(1)}
@@ -118,7 +118,7 @@ $(document).on('rex:ready', function() {
                             </div>
                             <div class="progress" style="display: none;">
                                 <div class="progress-bar progress-bar-striped active" role="progressbar" style="width: 100%">
-                                    Importing...
+                                    <i class="rex-icon fa-download"></i> Importing...
                                 </div>
                             </div>
                         </div>
@@ -136,6 +136,9 @@ $(document).on('rex:ready', function() {
             $('#asset-import-load-more').toggle(this.hasMore);
             
             this.showStatus('results', data.total);
+
+            // Initialize bootstrap-select for newly added selects
+            $('.selectpicker').selectpicker();
         },
         
         import: function(url, filename, btn) {
@@ -143,7 +146,8 @@ $(document).on('rex:ready', function() {
             const progress = item.find('.progress');
             const categoryId = $('#rex-mediapool-category').val();
             
-            btn.prop('disabled', true);
+            // Hide button and show progress
+            btn.hide();
             progress.show();
             
             $.ajax({
@@ -161,19 +165,19 @@ $(document).on('rex:ready', function() {
                     if (response.success) {
                         this.showSuccess('Asset successfully imported');
                         setTimeout(() => {
-                            btn.prop('disabled', false);
                             progress.hide();
+                            btn.show();
                         }, 1000);
                     } else {
                         this.showError(response.error || 'Import failed');
-                        btn.prop('disabled', false);
                         progress.hide();
+                        btn.show();
                     }
                 },
                 error: (xhr, status, error) => {
                     this.showError('Error importing file: ' + error);
-                    btn.prop('disabled', false);
                     progress.hide();
+                    btn.show();
                 }
             });
         },
