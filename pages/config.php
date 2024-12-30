@@ -5,7 +5,7 @@ $addon = \rex_addon::get('asset_import');
 $providers = AssetImporter::getProviders();
 
 if (empty($providers)) {
-    echo \rex_view::notice(\rex_i18n::msg('asset_import_provider_missing'));
+    echo \rex_view::info(\rex_i18n::msg('asset_import_provider_missing'));
     return;
 }
 
