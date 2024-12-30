@@ -1,5 +1,6 @@
-/* Light mode variables */
-:root {
+/* Default light mode variables */
+:root,
+.rex-theme-light {
     --ai-bg-color: #fff;
     --ai-border-color: #e9ecef;
     --ai-shadow-color: rgba(0,0,0,0.1);
@@ -7,16 +8,20 @@
     --ai-text-color: #666;
     --ai-hover-transform: scale(1.05);
     --ai-transition-speed: 0.3s;
+    --ai-preview-opacity: 1;
+    --ai-preview-hover-opacity: 1;
 }
 
 /* Dark mode variables */
 @media (prefers-color-scheme: dark) {
-    :root {
+    :root:not(.rex-theme-light) {
         --ai-bg-color: #32373c;
         --ai-border-color: #404850;
         --ai-shadow-color: rgba(0,0,0,0.25);
         --ai-preview-bg: #282c34;
         --ai-text-color: #b4b4b4;
+        --ai-preview-opacity: 0.9;
+        --ai-preview-hover-opacity: 1;
     }
 }
 
@@ -27,6 +32,8 @@
     --ai-shadow-color: rgba(0,0,0,0.25);
     --ai-preview-bg: #282c34;
     --ai-text-color: #b4b4b4;
+    --ai-preview-opacity: 0.9;
+    --ai-preview-hover-opacity: 1;
 }
 
 .asset-import-container {
@@ -71,12 +78,14 @@
     width: 100%;
     height: 100%;
     object-fit: cover;
-    transition: transform var(--ai-transition-speed) ease;
+    opacity: var(--ai-preview-opacity);
+    transition: transform var(--ai-transition-speed) ease, opacity var(--ai-transition-speed) ease;
 }
 
 .asset-import-preview img:hover,
 .asset-import-preview video:hover {
     transform: var(--ai-hover-transform);
+    opacity: var(--ai-preview-hover-opacity);
 }
 
 .asset-import-info {
@@ -103,6 +112,11 @@
     border-color: var(--ai-border-color);
 }
 
+.asset-import-size-select option {
+    background-color: var(--ai-bg-color);
+    color: var(--ai-text-color);
+}
+
 .asset-import-load-more {
     text-align: center;
     margin-top: 30px;
@@ -118,26 +132,4 @@
 .progress {
     margin: 10px 0;
     display: none;
-}
-
-/* Dark mode specific adjustments */
-@media (prefers-color-scheme: dark), .rex-theme-dark {
-    .asset-import-size-select option {
-        background-color: var(--ai-bg-color);
-        color: var(--ai-text-color);
-    }
-    
-    .asset-import-item .btn-primary {
-        border-color: var(--ai-border-color);
-    }
-    
-    .asset-import-preview img,
-    .asset-import-preview video {
-        opacity: 0.9;
-    }
-    
-    .asset-import-preview img:hover,
-    .asset-import-preview video:hover {
-        opacity: 1;
-    }
 }
