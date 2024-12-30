@@ -1,8 +1,19 @@
-package: addon_key
-version: '0.0.0'
-author: 'Friends Of REDAXO'
-supportpage: https://github.com/FriendsOfREDAXO/addon_key
+package: asset_import
+version: '1.0.0'
+author: Friends Of REDAXO
+supportpage: https://github.com/FriendsOfREDAXO/asset_import
+
 requires:
-    redaxo: '^5.15.1'
+    redaxo: '^5.18.0'
     php:
-        version: '>=8.1, <9'
+        version: '>=8.2'
+
+page:
+    title: 'translate:asset_import_title'
+    perm: admin[]
+    icon: rex-icon fa-cloud-download
+    subpages:
+        main: 
+            title: 'translate:asset_import_media'
+        config:
+            title: 'translate:asset_import_settings'
