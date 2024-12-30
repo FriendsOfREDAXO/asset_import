@@ -249,13 +249,124 @@ redaxo/
    - Nutzt den Standard-Import des AbstractProvider
    - Importiert direkt in den Medienpool
 
-### Erweiterungsmöglichkeiten
+## API Referenz
 
-- Konfigurierbare Verzeichnisse
-- Zusätzliche Dateitypen
-- Thumbnails für Videos
-- Metadaten aus EXIF/IPTC
-- Automatische Kategoriezuweisung basierend auf Unterordnern
+### AbstractProvider
+
+Die Basisklasse, von der alle Provider erben müssen. Stellt grundlegende Funktionalitäten und Schnittstellen bereit.
+
+#### Hauptmethoden
+
+```php
+public function getName(): string
+```
+Gibt einen eindeutigen Bezeichner für den Provider zurück.
+
+```php
+public function getTitle(): string
+```
+Gibt den Anzeigenamen zurück, der in der Benutzeroberfläche angezeigt wird.
+
+```php
+public function getIcon(): string
+```
+Gibt einen FontAwesome-Icon-Bezeichner zurück (z.B. 'fa-cloud').
+
+```php
+public function isConfigured(): bool
+```
+Prüft, ob der Provider alle erforderlichen Konfigurationseinstellungen hat.
+
+```php
+public function getConfigFields(): array
+```
+Gibt Konfigurationsfelder für die Provider-Einstellungsseite zurück. Jedes Feld sollte ein Array mit folgenden Elementen sein:
+- `name`: Feldbezeichner
+- `type`: Eingabetyp ('text', 'password', 'select')
+- `label`: Übersetzungsschlüssel für das Label
+- `notice`: Optionaler Übersetzungsschlüssel für Hilfetext
+- `options`: Array von Optionen für Select-Felder
+
+```php
+public function search(string $query, int $page = 1, array $options = []): array
+```
+Führt die Suche durch und gibt Ergebnisse in folgendem Format zurück:
+```php
+[
+    'items' => [
+        [
+            'id' => string,            // Eindeutige ID
+            'preview_url' => string,   // Vorschaubild-URL
+            'title' => string,         // Asset-Titel
+            'author' => string,        // Ersteller/Autor
+            'type' => string,          // 'image' oder 'video'
+            'size' => [               // Verfügbare Größen
+                'tiny' => ['url' => string],
+                'small' => ['url' => string],
+                'medium' => ['url' => string],
+                'large' => ['url' => string],
+                'original' => ['url' => string]
+            ]
+        ]
+    ],
+    'total' => int,          // Gesamtanzahl der Ergebnisse
+    'page' => int,           // Aktuelle Seitennummer
+    'total_pages' => int     // Gesamtanzahl der Seiten
+]
+```
+
+```php
+public function import(string $url, string $filename): bool
+```
+Importiert ein Asset in den REDAXO-Medienpool. Gibt bei Erfolg true zurück.
+
+#### Geschützte Methoden
+
+```php
+protected function searchApi(string $query, int $page = 1, array $options = []): array
+```
+Implementierung der eigentlichen API-Suche. Muss von Provider-Klassen implementiert werden.
+
+```php
+protected function getCacheLifetime(): int
+```
+Gibt die Cache-Lebensdauer in Sekunden zurück. Standard: 86400 (24 Stunden)
+
+```php
+protected function getDefaultOptions(): array
+```
+Gibt Standard-Suchoptionen zurück. Standard: `['type' => 'all']`
+
+### AssetImporter
+
+Statische Klasse zur Verwaltung von Providern.
+
+```php
+public static function registerProvider(string $providerClass): void
+```
+Registriert eine neue Provider-Klasse.
+
+```php
+public static function getProviders(): array
+```
+Gibt alle registrierten Provider-Klassen zurück.
+
+```php
+public static function getProvider(string $name): ?AbstractProvider
+```
+Gibt Provider-Instanz anhand des Namens zurück oder null, wenn nicht gefunden.
+
+### Cache
+
+Das AddOn verwendet das eingebaute Caching-System von REDAXO, um API-Antworten zu speichern. Cache-Einträge werden in der Tabelle `rex_asset_import_cache` gespeichert mit:
+
+- `provider`: Provider-Bezeichner
+- `cache_key`: MD5-Hash der Abfrageparameter
+- `response`: JSON-kodierte API-Antwort
+- `created`: Erstellungszeitpunkt
+- `valid_until`: Ablaufzeitpunkt
+
+Die Standard-Cache-Lebensdauer beträgt 24 Stunden und kann pro Provider durch Überschreiben von `getCacheLifetime()` angepasst werden.
 
 ### Lizenz
 
