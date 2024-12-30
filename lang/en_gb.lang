@@ -26,3 +26,5 @@ asset_import_provider_error = Provider not configured
 asset_import_provider_missing = Provider not found
 
 asset_import_config_saved = Settings saved
+
+asset_import_provider_pixabay_apikey = Pixabay API key
