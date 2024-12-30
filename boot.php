@@ -2,7 +2,7 @@
 
 // Start session für CSRF-Protection
 if (\rex_backend_login::hasSession()) {
-    rex_csrf_token::factory('asset_import');
+    \rex_csrf_token::factory('asset_import');
 }
 
 
