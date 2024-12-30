@@ -62,7 +62,17 @@ class PixabayProvider extends AbstractProvider
 
             // Bei 'all' oder 'image' nach Bildern suchen
             if ($type === 'all' || $type === 'image') {
-                $imageResults = $this->fetchFromApi($this->apiUrl, $query, $page, ['image_type' => 'all']);
+                $imageParams = [
+                    'key' => $this->config['apikey'],
+                    'q' => $query,
+                    'page' => $page,
+                    'per_page' => $type === 'all' ? intval($this->itemsPerPage / 2) : $this->itemsPerPage,
+                    'safesearch' => 'true',
+                    'lang' => 'de',
+                    'image_type' => 'all'
+                ];
+                
+                $imageResults = $this->makeApiRequest($this->apiUrl, $imageParams);
                 if ($imageResults) {
                     $results = array_map(function($item) {
                         return [
@@ -79,13 +89,22 @@ class PixabayProvider extends AbstractProvider
                             ]
                         ];
                     }, $imageResults['hits']);
-                    $totalHits += $imageResults['totalHits'];
+                    $totalHits = $imageResults['totalHits'];
                 }
             }
 
             // Bei 'all' oder 'video' nach Videos suchen
             if ($type === 'all' || $type === 'video') {
-                $videoResults = $this->fetchFromApi($this->apiUrlVideos, $query, $page);
+                $videoParams = [
+                    'key' => $this->config['apikey'],
+                    'q' => $query,
+                    'page' => $page,
+                    'per_page' => $type === 'all' ? intval($this->itemsPerPage / 2) : $this->itemsPerPage,
+                    'safesearch' => 'true',
+                    'lang' => 'de'
+                ];
+                
+                $videoResults = $this->makeApiRequest($this->apiUrlVideos, $videoParams);
                 if ($videoResults) {
                     $videoItems = array_map(function($item) {
                         return [
@@ -102,10 +121,20 @@ class PixabayProvider extends AbstractProvider
                             ]
                         ];
                     }, $videoResults['hits']);
-                    $results = array_merge($results, $videoItems);
-                    $totalHits += $videoResults['totalHits'];
+                    
+                    if ($type === 'all') {
+                        // Bei 'all' die Results zusammenführen und Durchschnitt der Gesamttreffer berechnen
+                        $results = array_merge($results, $videoItems);
+                        $totalHits = intval(($totalHits + $videoResults['totalHits']) / 2);
+                    } else {
+                        $results = $videoItems;
+                        $totalHits = $videoResults['totalHits'];
+                    }
                 }
             }
+
+            // Ensure we never return more than itemsPerPage results
+            $results = array_slice($results, 0, $this->itemsPerPage);
 
             return [
                 'items' => $results,
@@ -113,25 +142,17 @@ class PixabayProvider extends AbstractProvider
                 'page' => $page,
                 'total_pages' => ceil($totalHits / $this->itemsPerPage)
             ];
+            
         } catch (\Exception $e) {
             \rex_logger::factory()->log(LogLevel::ERROR, 'Exception in searchApi: {message}', ['message' => $e->getMessage()], __FILE__, __LINE__);
             return [];
         }
     }
 
-    protected function fetchFromApi(string $apiUrl, string $query, int $page, array $additionalParams = []): ?array
+    protected function makeApiRequest(string $url, array $params): ?array
     {
-        $params = array_merge([
-            'key' => $this->config['apikey'],
-            'q' => $query,
-            'page' => $page,
-            'per_page' => $this->itemsPerPage,
-            'safesearch' => 'true',
-            'lang' => 'de'
-        ], $additionalParams);
-
-        $url = $apiUrl . '?' . http_build_query($params, '', '&', PHP_QUERY_RFC3986);
-
+        $url = $url . '?' . http_build_query($params, '', '&', PHP_QUERY_RFC3986);
+        
         \rex_logger::factory()->log(LogLevel::INFO, 'Pixabay API URL: {url}', ['url' => $url], __FILE__, __LINE__);
 
         $ch = curl_init();
@@ -143,7 +164,7 @@ class PixabayProvider extends AbstractProvider
         ]);
 
         $response = curl_exec($ch);
-            
+        
         if ($response === false) {
             $errorMessage = 'Curl error: ' . curl_error($ch) . ' - URL: ' . $url;
             \rex_logger::factory()->log(LogLevel::ERROR, 'Curl Error: {message}', ['message' => $errorMessage], __FILE__, __LINE__);
@@ -155,8 +176,8 @@ class PixabayProvider extends AbstractProvider
 
         $data = json_decode($response, true);
         if (!isset($data['hits'])) {
-            $errorMessage = 'Invalid response from Pixabay API - URL: {url} - Response: {response}';
-            \rex_logger::factory()->log(LogLevel::ERROR, 'Invalid API Response: {message}', ['message' => $errorMessage, 'url' => $url, 'response' => $response], __FILE__, __LINE__);
+            $errorMessage = 'Invalid response from Pixabay API - URL: ' . $url . ' - Response: ' . $response;
+            \rex_logger::factory()->log(LogLevel::ERROR, 'Invalid API Response: {message}', ['message' => $errorMessage], __FILE__, __LINE__);
             return null;
         }
 
