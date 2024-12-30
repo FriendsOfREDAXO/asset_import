@@ -67,3 +67,8 @@ MIT Lizenz, siehe [LICENSE](LICENSE)
 
 * http://www.redaxo.org
 * https://github.com/FriendsOfREDAXO
+
+
+**Project Lead**
+
+[Thomas Skerbis](https://github.com/skerbis)  
