@@ -1,3 +1,34 @@
+/* Light mode variables */
+:root {
+    --ai-bg-color: #fff;
+    --ai-border-color: #e9ecef;
+    --ai-shadow-color: rgba(0,0,0,0.1);
+    --ai-preview-bg: #f8f9fa;
+    --ai-text-color: #666;
+    --ai-hover-transform: scale(1.05);
+    --ai-transition-speed: 0.3s;
+}
+
+/* Dark mode variables */
+@media (prefers-color-scheme: dark) {
+    :root {
+        --ai-bg-color: #32373c;
+        --ai-border-color: #404850;
+        --ai-shadow-color: rgba(0,0,0,0.25);
+        --ai-preview-bg: #282c34;
+        --ai-text-color: #b4b4b4;
+    }
+}
+
+/* REDAXO dark mode */
+.rex-theme-dark {
+    --ai-bg-color: #32373c;
+    --ai-border-color: #404850;
+    --ai-shadow-color: rgba(0,0,0,0.25);
+    --ai-preview-bg: #282c34;
+    --ai-text-color: #b4b4b4;
+}
+
 .asset-import-container {
     padding: 20px 0;
 }
@@ -14,21 +45,21 @@
 }
 
 .asset-import-item {
-    background: #fff;
-    border: 1px solid #e9ecef;
+    background: var(--ai-bg-color);
+    border: 1px solid var(--ai-border-color);
     border-radius: 4px;
     overflow: hidden;
-    transition: box-shadow 0.3s ease;
+    transition: box-shadow var(--ai-transition-speed) ease;
 }
 
 .asset-import-item:hover {
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    box-shadow: 0 2px 8px var(--ai-shadow-color);
 }
 
 .asset-import-preview {
     position: relative;
     padding-bottom: 75%;
-    background: #f8f9fa;
+    background: var(--ai-preview-bg);
     overflow: hidden;
 }
 
@@ -40,12 +71,12 @@
     width: 100%;
     height: 100%;
     object-fit: cover;
-    transition: transform 0.3s ease;
+    transition: transform var(--ai-transition-speed) ease;
 }
 
 .asset-import-preview img:hover,
 .asset-import-preview video:hover {
-    transform: scale(1.05);
+    transform: var(--ai-hover-transform);
 }
 
 .asset-import-info {
@@ -55,7 +86,7 @@
 .asset-import-title {
     margin: 0 0 10px 0;
     font-size: 14px;
-    color: #666;
+    color: var(--ai-text-color);
     word-break: break-word;
 }
 
@@ -67,6 +98,9 @@
 
 .asset-import-size-select {
     width: 100%;
+    background-color: var(--ai-bg-color);
+    color: var(--ai-text-color);
+    border-color: var(--ai-border-color);
 }
 
 .asset-import-load-more {
@@ -76,7 +110,7 @@
 
 .asset-import-attribution {
     margin-top: 20px;
-    color: #666;
+    color: var(--ai-text-color);
     font-size: 12px;
     text-align: center;
 }
@@ -84,4 +118,26 @@
 .progress {
     margin: 10px 0;
     display: none;
+}
+
+/* Dark mode specific adjustments */
+@media (prefers-color-scheme: dark), .rex-theme-dark {
+    .asset-import-size-select option {
+        background-color: var(--ai-bg-color);
+        color: var(--ai-text-color);
+    }
+    
+    .asset-import-item .btn-primary {
+        border-color: var(--ai-border-color);
+    }
+    
+    .asset-import-preview img,
+    .asset-import-preview video {
+        opacity: 0.9;
+    }
+    
+    .asset-import-preview img:hover,
+    .asset-import-preview video:hover {
+        opacity: 1;
+    }
 }
