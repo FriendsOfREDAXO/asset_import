@@ -1,6 +1,7 @@
 <?php
 namespace FriendsOfRedaxo\AssetImport\Asset;
 
+use FriendsOfRedaxo\AssetImport\Provider\ProviderInterface;
 use Psr\Log\LogLevel;
 
 abstract class AbstractProvider implements ProviderInterface
