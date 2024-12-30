@@ -6,14 +6,15 @@ if (rex_backend_login::hasSession()) {
     rex_csrf_token::factory('asset_import');
 }
 
-// Registriere Basis-Provider
-if(class_exists('\FriendsOfRedaxo\AssetImport\Provider\PixabayProvider')) {
-    AssetImporter::registerProvider('\FriendsOfRedaxo\AssetImport\Provider\PixabayProvider');
-}
 
 // Nur im Backend ausführen
 if (\rex::isBackend() && \rex::getUser()) {
 
+    // Provider registrieren
+$provider = new \FriendsOfRedaxo\AssetImport\Provider\PixabayProvider();
+\FriendsOfRedaxo\AssetImport\AssetImporter::registerProvider($provider->getName(), get_class($provider));
+
+    
     // Assets einbinden
     if (\rex_be_controller::getCurrentPage() == 'asset_import/main') {
         \rex_view::addCssFile(\rex_addon::get('asset_import')->getAssetsUrl('asset_import.css'));
