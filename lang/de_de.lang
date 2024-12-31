@@ -16,18 +16,19 @@ asset_import_load_more = Mehr laden
 
 asset_import_preview = Vorschau
 asset_import_import = Importieren
-asset_import_import_success = Die Datei wurde erfolgreich importiert
+asset_import_import_success = Datei wurde erfolgreich importiert
 asset_import_import_error = Fehler beim Import der Datei
 
 asset_import_target_category = Zielkategorie
 asset_import_category_notice = In welche Kategorie sollen die Dateien importiert werden?
 
-asset_import_provider_error = Provider nicht konfiguriert
-asset_import_provider_missing = Provider nicht gefunden
+asset_import_provider_error = Keine Provider konfiguriert. Bitte API-Keys in den Einstellungen hinterlegen.
+asset_import_provider_missing = Keine Provider verfügbar.
 
 asset_import_config_saved = Einstellungen wurden gespeichert
 
 asset_import_provider_pixabay_apikey = Pixabay API-Key
+asset_import_provider_pixabay_apikey_notice = Tragen Sie hier Ihren Pixabay API-Key ein
 
 asset_import_provider_pexels_apikey = Pexels API-Key
-asset_import_provider_pexels_apikey_notice = API-Key von Pexels.com
+asset_import_provider_pexels_apikey_notice = Tragen Sie hier Ihren Pexels API-Key ein
