@@ -68,6 +68,7 @@
     padding-bottom: 75%;
     background: var(--ai-preview-bg);
     overflow: hidden;
+    cursor: pointer;
 }
 
 .asset-import-preview img,
@@ -112,11 +113,6 @@
     border-color: var(--ai-border-color);
 }
 
-.asset-import-size-select option {
-    background-color: var(--ai-bg-color);
-    color: var(--ai-text-color);
-}
-
 .asset-import-load-more {
     text-align: center;
     margin-top: 30px;
@@ -132,4 +128,52 @@
 .progress {
     margin: 10px 0;
     display: none;
+}
+
+/* Modal styles */
+#asset-preview-modal .modal-dialog {
+    max-width: 90vw;
+}
+
+#asset-preview-modal .preview-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: var(--ai-preview-bg);
+    border-radius: 4px;
+    margin-bottom: 20px;
+}
+
+#asset-preview-modal .preview-content img,
+#asset-preview-modal .preview-content video {
+    max-height: 70vh;
+    width: auto;
+    object-fit: contain;
+}
+
+#asset-preview-modal .asset-details {
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+/* Success modal styles */
+#success-modal {
+    z-index: 1060;
+}
+
+#success-modal .modal-dialog {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+#success-modal .modal-content {
+    background: rgba(255, 255, 255, 0.95);
+    border: none;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.2);
+}
+
+.rex-theme-dark #success-modal .modal-content {
+    background: rgba(50, 55, 60, 0.95);
 }
