@@ -4,16 +4,24 @@ namespace FriendsOfRedaxo\AssetImport;
 $addon = \rex_addon::get('asset_import');
 $providers = AssetImporter::getProviders();
 
-if (empty($providers)) {
+// Check for configured providers
+$configuredProviders = [];
+foreach ($providers as $id => $class) {
+    $provider = new $class();
+    if ($provider->isConfigured()) {
+        $configuredProviders[$id] = $class;
+    }
+}
+
+if (empty($configuredProviders)) {
     echo \rex_view::info(\rex_i18n::msg('asset_import_provider_missing'));
     return;
 }
 
-// Formular verarbeiten
+// Process form
 if (\rex_post('config-submit', 'boolean')) {
     $error = false;
     
-    // Provider-Einstellungen speichern
     foreach ($providers as $id => $class) {
         $provider = new $class();
         if (isset($_POST['config'][$id])) {
@@ -29,7 +37,6 @@ if (\rex_post('config-submit', 'boolean')) {
 
 $content = '';
 
-// Für jeden Provider Einstellungen anzeigen
 foreach ($providers as $id => $class) {
     $provider = new $class();
     $fields = $provider->getConfigFields();
@@ -64,7 +71,7 @@ foreach ($providers as $id => $class) {
                 $select->setId($id . '-' . $field['name']);
                 $select->setName('config[' . $id . '][' . $field['name'] . ']');
                 $select->setSelected($value);
-                $select->setAttribute('class', 'form-control');
+                $select->setAttribute('class', 'form-control selectpicker');
                 foreach ($field['options'] as $option) {
                     $select->addOption($option['label'], $option['value']);
                 }
