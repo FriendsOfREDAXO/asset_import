@@ -9,6 +9,7 @@ class PixabayProvider extends AbstractProvider
     protected string $apiUrl = 'https://pixabay.com/api/';
     protected string $apiUrlVideos = 'https://pixabay.com/api/videos/';
     protected int $itemsPerPage = 20;
+    protected ?string $currentAuthor = null;
 
     public function getName(): string
     {
@@ -49,37 +50,31 @@ class PixabayProvider extends AbstractProvider
         ];
     }
 
-    /**
-     * Extract image ID from Pixabay URL
-     */
+    protected function getAuthor(): string 
+    {
+        return $this->currentAuthor ?? '';
+    }
+
     protected function extractImageIdFromUrl(string $url): ?int
     {
-        // Match URLs like https://pixabay.com/photos/moers-safety-lamp-landmark-night-4854105/
-        // or https://pixabay.com/videos/stars-night-sky-star-night-sky-31277/
-        if (preg_match('#pixabay\.com/(?:photos|videos)/[^/]+-(\d+)/?$#i', $url, $matches)) {
+        if (preg_match('#pixabay\.com/(?:photos|videos|illustrations|vectors)/[^/]+-(\d+)/?$#i', $url, $matches)) {
             return (int)$matches[1];
         }
         return null;
     }
 
-    /**
-     * Check if input is a Pixabay URL
-     */
     protected function isPixabayUrl(string $query): bool
     {
-        return (bool)preg_match('#^https?://(?:www\.)?pixabay\.com/(?:photos|videos)/#i', $query);
+        return (bool)preg_match('#^https?://(?:www\.)?pixabay\.com/(?:photos|videos|illustrations|vectors)/#i', $query);
     }
 
-    /**
-     * Get single image by ID
-     */
     protected function getById(int $id, string $type = 'image'): ?array
     {
         $params = [
             'key' => $this->config['apikey'],
             'id' => $id,
             'safesearch' => 'true',
-            'lang' => 'de'
+            'lang' => \rex::getUser()->getLanguage()
         ];
 
         $baseUrl = ($type === 'video') ? $this->apiUrlVideos : $this->apiUrl;
@@ -104,15 +99,12 @@ class PixabayProvider extends AbstractProvider
                 throw new \rex_exception('Pixabay API key not configured');
             }
 
-            // Check if query is a Pixabay URL
             if ($this->isPixabayUrl($query)) {
                 $imageId = $this->extractImageIdFromUrl($query);
                 if ($imageId) {
-                    // Try image first
                     $item = $this->getById($imageId, 'image');
                     $type = 'image';
                     
-                    // If not found, try video
                     if (!$item) {
                         $item = $this->getById($imageId, 'video');
                         $type = 'video';
@@ -128,14 +120,12 @@ class PixabayProvider extends AbstractProvider
                         ];
                     }
                 }
-                // If URL parsing failed, fall back to normal search
             }
 
             $type = $options['type'] ?? 'image';
             $results = [];
             $totalHits = 0;
 
-            // Bei 'all' oder 'image' nach Bildern suchen
             if ($type === 'all' || $type === 'image') {
                 $imageParams = [
                     'key' => $this->config['apikey'],
@@ -143,7 +133,7 @@ class PixabayProvider extends AbstractProvider
                     'page' => $page,
                     'per_page' => $type === 'all' ? intval($this->itemsPerPage / 2) : $this->itemsPerPage,
                     'safesearch' => 'true',
-                    'lang' => 'de',
+                    'lang' => \rex::getUser()->getLanguage(),
                     'image_type' => 'all'
                 ];
                 
@@ -157,7 +147,6 @@ class PixabayProvider extends AbstractProvider
                 }
             }
 
-            // Bei 'all' oder 'video' nach Videos suchen
             if ($type === 'all' || $type === 'video') {
                 $videoParams = [
                     'key' => $this->config['apikey'],
@@ -165,7 +154,7 @@ class PixabayProvider extends AbstractProvider
                     'page' => $page,
                     'per_page' => $type === 'all' ? intval($this->itemsPerPage / 2) : $this->itemsPerPage,
                     'safesearch' => 'true',
-                    'lang' => 'de'
+                    'lang' => \rex::getUser()->getLanguage()
                 ];
                 
                 $videoResults = $this->makeApiRequest($this->apiUrlVideos, $videoParams);
@@ -185,7 +174,6 @@ class PixabayProvider extends AbstractProvider
                 }
             }
 
-            // Ensure we never return more than itemsPerPage results
             $results = array_slice($results, 0, $this->itemsPerPage);
 
             return [
@@ -201,39 +189,43 @@ class PixabayProvider extends AbstractProvider
         }
     }
 
-    /**
-     * Format API item to standardized response
-     */
     protected function formatItem(array $item, string $type): array
     {
+        $this->currentAuthor = $item['user'] ?? '';
+
         if ($type === 'video') {
             return [
                 'id' => $item['id'],
                 'preview_url' => $item['picture_id'] ? "https://i.vimeocdn.com/video/{$item['picture_id']}_640x360.jpg" : '',
                 'title' => $item['tags'],
-                'author' => $item['user'],
+                'author' => $this->getAuthor(),
                 'type' => 'video',
                 'size' => [
-                    'tiny' => ['url' => $item['videos']['tiny']['url']],
-                    'small' => ['url' => $item['videos']['small']['url']],
-                    'medium' => ['url' => $item['videos']['medium']['url']],
-                    'large' => ['url' => $item['videos']['large']['url'] ?? $item['videos']['medium']['url']]
+                    'small' => ['url' => $item['videos']['small']['url'] ?? ''],
+                    'medium' => ['url' => $item['videos']['medium']['url'] ?? ''],
+                    'large' => ['url' => $item['videos']['large']['url'] ?? $item['videos']['medium']['url'] ?? '']
                 ]
             ];
+        }
+
+        $sizes = [
+            'small' => ['url' => $item['webformatURL']],
+            'medium' => ['url' => $item['largeImageURL']],
+            'large' => ['url' => $item['imageURL'] ?? $item['largeImageURL']]
+        ];
+
+        // Add vector if available
+        if (isset($item['vectorURL'])) {
+            $sizes['vector'] = ['url' => $item['vectorURL']];
         }
         
         return [
             'id' => $item['id'],
             'preview_url' => $item['webformatURL'],
             'title' => $item['tags'],
-            'author' => $item['user'],
+            'author' => $this->getAuthor(),
             'type' => 'image',
-            'size' => [
-                'preview' => ['url' => $item['previewURL']],
-                'web' => ['url' => $item['webformatURL']],
-                'large' => ['url' => $item['largeImageURL']],
-                'original' => ['url' => $item['imageURL'] ?? $item['largeImageURL']]
-            ]
+            'size' => $sizes
         ];
     }
 
