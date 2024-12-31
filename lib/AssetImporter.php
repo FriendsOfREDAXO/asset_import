@@ -16,7 +16,9 @@ class AssetImporter
             throw new \rex_exception('Provider must implement ProviderInterface: ' . $class);
         }
         
-        self::$providers[$provider->getName()] = $class;
+        if ($provider->isConfigured()) {
+            self::$providers[$provider->getName()] = $class;
+        }
     }
 
     public static function registerProvidersFromNamespace(string $namespace): void
