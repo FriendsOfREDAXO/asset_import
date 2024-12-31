@@ -28,3 +28,6 @@ asset_import_provider_missing = Provider nicht gefunden
 asset_import_config_saved = Einstellungen wurden gespeichert
 
 asset_import_provider_pixabay_apikey = Pixabay API-Key
+
+asset_import_provider_pexels_apikey = Pexels API-Key
+asset_import_provider_pexels_apikey_notice = API-Key von Pexels.com
