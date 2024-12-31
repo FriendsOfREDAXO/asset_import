@@ -14,6 +14,12 @@ class PixabayProvider extends AbstractProvider
     protected string $apiUrlVideos = 'https://pixabay.com/api/videos/';
     protected int $itemsPerPage = 20;
     protected array $currentAssetInfo = [];
+    protected array $currentItemData = [];
+    
+    public function setCurrentItemData(array $data): void
+    {
+        $this->currentItemData = $data;
+    }
 
     public function getName(): string
     {
@@ -188,6 +194,8 @@ class PixabayProvider extends AbstractProvider
         return $data;
     }
 
+    protected array $currentItemData = [];
+
     public function import(string $url, string $filename): bool
     {
         if (!$this->isConfigured()) {
@@ -201,14 +209,12 @@ class PixabayProvider extends AbstractProvider
             $extension = strpos($url, 'vimeocdn.com') !== false ? 'mp4' : 'jpg';
         }
         
-        // Extract author from the title/filename
-        $parts = explode(',', $filename);
-        $author = trim(end($parts));
-        
-        // Store asset info for use in setMediaMetadata
-        $this->currentAssetInfo = [
-            'copyright' => sprintf('Pixabay, %s', $author)
-        ];
+        // Store the author from the current item data
+        if (!empty($this->currentItemData['author'])) {
+            $this->currentAssetInfo = [
+                'copyright' => sprintf('Pixabay, %s', $this->currentItemData['author'])
+            ];
+        }
         
         $filename = $filename . '.' . $extension;
         return $this->downloadFile($url, $filename);
