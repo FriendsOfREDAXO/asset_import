@@ -179,7 +179,7 @@ $(document).on('rex:ready', function() {
                         <div class="asset-import-preview">
                             ${item.type === 'video' ? `
                                 <video>
-                                    <source src="${item.size.tiny.url}" type="video/mp4">
+                                    <source src="${item.size.small.url}" type="video/mp4">
                                 </video>
                             ` : `
                                 <img src="${item.preview_url}" alt="${item.title}">
@@ -220,7 +220,7 @@ $(document).on('rex:ready', function() {
             
             this.showStatus('results', data.total);
 
-            $('.selectpicker').selectpicker();
+            $('.selectpicker').selectpicker('refresh');
         },
         
         getProviderTitle: function() {
