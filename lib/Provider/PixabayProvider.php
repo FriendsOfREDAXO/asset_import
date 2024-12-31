@@ -5,6 +5,7 @@ use FriendsOfRedaxo\AssetImport\Asset\AbstractProvider;
 use Psr\Log\LogLevel;
 use rex_media;
 use rex_media_manager;
+use rex_sql;
 
 class PixabayProvider extends AbstractProvider
 {
