@@ -16,18 +16,19 @@ asset_import_load_more = Load more
 
 asset_import_preview = Preview
 asset_import_import = Import
-asset_import_import_success = File has been imported successfully
+asset_import_import_success = File has been imported
 asset_import_import_error = Error importing file
 
 asset_import_target_category = Target category
 asset_import_category_notice = Choose the category to import files into
 
-asset_import_provider_error = Provider not configured
-asset_import_provider_missing = Provider not found
+asset_import_provider_error = No providers configured. Please add API keys in settings.
+asset_import_provider_missing = No providers available.
 
 asset_import_config_saved = Settings saved
 
 asset_import_provider_pixabay_apikey = Pixabay API key
+asset_import_provider_pixabay_apikey_notice = Enter your Pixabay API key
 
-asset_import_provider_pexels_apikey = Pexels API-Key
-asset_import_provider_pexels_apikey_notice = API-Key von Pexels.com
+asset_import_provider_pexels_apikey = Pexels API key
+asset_import_provider_pexels_apikey_notice = Enter your Pexels API key
