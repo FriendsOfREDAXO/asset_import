@@ -8,7 +8,7 @@ class PexelsProvider extends AbstractProvider
 {
     protected string $apiUrl = 'https://api.pexels.com/v1/';
     protected string $apiUrlVideos = 'https://api.pexels.com/videos/';
-    protected int $itemsPerPage = 80; // Maximum laut API-Dokumentation
+    protected int $itemsPerPage = 20; // Maximum laut API-Dokumentation
 
     public function getName(): string
     {
