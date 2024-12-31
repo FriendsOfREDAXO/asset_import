@@ -8,7 +8,7 @@ class PexelsProvider extends AbstractProvider
 {
     protected string $apiUrl = 'https://api.pexels.com/v1/';
     protected string $apiUrlVideos = 'https://api.pexels.com/videos/';
-    protected int $itemsPerPage = 40;
+    protected int $itemsPerPage = 80; // Maximum laut API-Dokumentation
 
     public function getName(): string
     {
@@ -258,34 +258,54 @@ class PexelsProvider extends AbstractProvider
                 return $b['height'] <=> $a['height'];
             });
 
+            // Gruppiere Videos nach Qualität
+            $sizes = [];
+            foreach ($videoFiles as $file) {
+                $quality = $file['quality'] ?? 'sd';
+                if ($quality === 'hd' && !isset($sizes['large'])) {
+                    $sizes['large'] = ['url' => $file['link']];
+                } elseif ($quality === 'sd') {
+                    if (!isset($sizes['medium']) && $file['height'] >= 720) {
+                        $sizes['medium'] = ['url' => $file['link']];
+                    } elseif (!isset($sizes['small']) && $file['height'] >= 480) {
+                        $sizes['small'] = ['url' => $file['link']];
+                    } elseif (!isset($sizes['tiny'])) {
+                        $sizes['tiny'] = ['url' => $file['link']];
+                    }
+                }
+            }
+
+            // Stelle sicher, dass wir alle Größen haben
+            if (!empty($videoFiles)) {
+                $defaultUrl = $videoFiles[0]['link'];
+                $sizes['large'] = $sizes['large'] ?? ['url' => $defaultUrl];
+                $sizes['medium'] = $sizes['medium'] ?? ['url' => $defaultUrl];
+                $sizes['small'] = $sizes['small'] ?? ['url' => $defaultUrl];
+                $sizes['tiny'] = $sizes['tiny'] ?? ['url' => $defaultUrl];
+            }
+
             return [
                 'id' => $item['id'],
                 'preview_url' => $item['image'] ?? '',
-                'title' => $item['duration'] ? "Video {$item['duration']}s" : 'Video',
+                'title' => $item['duration'] ? sprintf('Video (%ds) - %s', $item['duration'], $item['url']) : 'Video',
                 'author' => $item['user']['name'] ?? 'Pexels',
                 'type' => 'video',
-                'size' => [
-                    'tiny' => ['url' => $videoFiles[0]['link'] ?? ''],
-                    'small' => ['url' => $videoFiles[1]['link'] ?? $videoFiles[0]['link'] ?? ''],
-                    'medium' => ['url' => $videoFiles[2]['link'] ?? $videoFiles[0]['link'] ?? ''],
-                    'large' => ['url' => $videoFiles[3]['link'] ?? $videoFiles[0]['link'] ?? '']
-                ]
+                'size' => $sizes
             ];
         }
         
-        // Für Bilder
-        $title = $item['alt'] ?? $item['photographer'] ?? 'Image';
+        // Für Bilder - laut API-Dokumentation
         return [
             'id' => $item['id'],
             'preview_url' => $item['src']['medium'] ?? '',
-            'title' => $title,
+            'title' => $item['alt'] ?? $item['photographer'] ?? 'Image',
             'author' => $item['photographer'] ?? 'Pexels',
             'type' => 'image',
             'size' => [
-                'tiny' => ['url' => $item['src']['small'] ?? ''],
-                'small' => ['url' => $item['src']['medium'] ?? ''],
-                'medium' => ['url' => $item['src']['large'] ?? ''],
-                'large' => ['url' => $item['src']['original'] ?? '']
+                'tiny' => ['url' => $item['src']['tiny'] ?? ''],
+                'small' => ['url' => $item['src']['small'] ?? ''],
+                'medium' => ['url' => $item['src']['medium'] ?? ''],
+                'large' => ['url' => $item['src']['original'] ?? $item['src']['large2x'] ?? $item['src']['large'] ?? '']
             ]
         ];
     }
