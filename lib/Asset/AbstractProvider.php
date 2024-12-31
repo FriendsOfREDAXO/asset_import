@@ -142,13 +142,18 @@ abstract class AbstractProvider implements ProviderInterface
                 
                 $result = \rex_media_service::addMedia($media, true);
                 
-                // Add copyright information if meta field exists
-                if ($result && \rex_metainfo_get_fields('med_copyright')) {
+                // Check for copyright field and add metadata if exists
+                if ($result) {
                     $sql = \rex_sql::factory();
-                    $sql->setTable(\rex::getTable('media'));
-                    $sql->setWhere(['filename' => $filename]);
-                    $sql->setValue('med_copyright', $this->getTitle() . ' / ' . $this->getAuthor());
-                    $sql->update();
+                    $sql->setQuery('SELECT * FROM ' . \rex::getTable('metainfo_field') . ' WHERE name = :name', ['name' => 'med_copyright']);
+                    
+                    if ($sql->getRows() > 0) {
+                        $sql = \rex_sql::factory();
+                        $sql->setTable(\rex::getTable('media'));
+                        $sql->setWhere(['filename' => $filename]);
+                        $sql->setValue('med_copyright', $this->getTitle() . ' / ' . $this->getAuthor());
+                        $sql->update();
+                    }
                 }
                 
                 unlink($tmpFile);
