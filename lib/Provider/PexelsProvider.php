@@ -252,35 +252,40 @@ class PexelsProvider extends AbstractProvider
     protected function formatItem(array $item, string $type): array
     {
         if ($type === 'video') {
-            $sizes = [];
-            foreach ($item['video_files'] as $file) {
-                $quality = $this->getVideoQualityLabel($file);
-                if ($quality) {
-                    $sizes[$quality] = ['url' => $file['link']];
-                }
-            }
+            // Sortiere Video-Files nach Qualität (HD zuerst)
+            $videoFiles = $item['video_files'] ?? [];
+            usort($videoFiles, function($a, $b) {
+                return $b['height'] <=> $a['height'];
+            });
 
             return [
                 'id' => $item['id'],
-                'preview_url' => $item['image'], // Thumbnail image
-                'title' => $item['url'], // Pexels doesn't provide tags, use URL as fallback
-                'author' => $item['user']['name'],
+                'preview_url' => $item['image'] ?? '',
+                'title' => $item['duration'] ? "Video {$item['duration']}s" : 'Video',
+                'author' => $item['user']['name'] ?? 'Pexels',
                 'type' => 'video',
-                'size' => $sizes
+                'size' => [
+                    'tiny' => ['url' => $videoFiles[0]['link'] ?? ''],
+                    'small' => ['url' => $videoFiles[1]['link'] ?? $videoFiles[0]['link'] ?? ''],
+                    'medium' => ['url' => $videoFiles[2]['link'] ?? $videoFiles[0]['link'] ?? ''],
+                    'large' => ['url' => $videoFiles[3]['link'] ?? $videoFiles[0]['link'] ?? '']
+                ]
             ];
         }
         
+        // Für Bilder
+        $title = $item['alt'] ?? $item['photographer'] ?? 'Image';
         return [
             'id' => $item['id'],
-            'preview_url' => $item['src']['medium'],
-            'title' => $item['url'], // Pexels doesn't provide tags, use URL as fallback
-            'author' => $item['photographer'],
+            'preview_url' => $item['src']['medium'] ?? '',
+            'title' => $title,
+            'author' => $item['photographer'] ?? 'Pexels',
             'type' => 'image',
             'size' => [
-                'preview' => ['url' => $item['src']['tiny']],
-                'web' => ['url' => $item['src']['medium']],
-                'large' => ['url' => $item['src']['large2x']],
-                'original' => ['url' => $item['src']['original']]
+                'tiny' => ['url' => $item['src']['small'] ?? ''],
+                'small' => ['url' => $item['src']['medium'] ?? ''],
+                'medium' => ['url' => $item['src']['large'] ?? ''],
+                'large' => ['url' => $item['src']['original'] ?? '']
             ]
         ];
     }
