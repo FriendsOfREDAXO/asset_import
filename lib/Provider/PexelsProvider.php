@@ -34,7 +34,23 @@ class PexelsProvider extends AbstractProvider
 
     public function isConfigured(): bool
     {
-        return isset($this->config['apikey']) && !empty($this->config['apikey']);
+        $isConfigured = isset($this->config) && 
+                       is_array($this->config) && 
+                       isset($this->config['apikey']) && 
+                       !empty($this->config['apikey']);
+        
+        if (!$isConfigured) {
+            \rex_logger::factory()->log(LogLevel::WARNING, 'Pexels provider not configured correctly. Config status: {status}', [
+                'status' => [
+                    'config_set' => isset($this->config),
+                    'is_array' => isset($this->config) && is_array($this->config),
+                    'has_apikey' => isset($this->config['apikey']),
+                    'apikey_not_empty' => !empty($this->config['apikey'])
+                ]
+            ], __FILE__, __LINE__);
+        }
+        
+        return $isConfigured;
     }
 
     public function getConfigFields(): array
@@ -295,11 +311,20 @@ class PexelsProvider extends AbstractProvider
      */
     protected function makeApiRequest(string $url, array $params = []): ?array
     {
+        if (!$this->isConfigured()) {
+            throw new \rex_exception('Pexels API key not configured');
+        }
+
         if (!empty($params)) {
             $url .= '?' . http_build_query($params, '', '&', PHP_QUERY_RFC3986);
         }
         
         \rex_logger::factory()->log(LogLevel::INFO, 'Pexels API URL: {url}', ['url' => $url], __FILE__, __LINE__);
+
+        // Debug log für API Key (nur die ersten 4 Zeichen)
+        $apiKey = $this->config['apikey'];
+        $maskedKey = substr($apiKey, 0, 4) . '...';
+        \rex_logger::factory()->log(LogLevel::DEBUG, 'Using Pexels API key: {key}', ['key' => $maskedKey], __FILE__, __LINE__);
 
         $ch = curl_init();
         curl_setopt_array($ch, [
@@ -308,7 +333,9 @@ class PexelsProvider extends AbstractProvider
             CURLOPT_SSL_VERIFYPEER => true,
             CURLOPT_TIMEOUT => 20,
             CURLOPT_HTTPHEADER => [
-                'Authorization: ' . $this->config['apikey']
+                'Authorization: ' . $apiKey,
+                'Accept: application/json',
+                'User-Agent: REDAXO Asset Import'
             ]
         ]);
 
