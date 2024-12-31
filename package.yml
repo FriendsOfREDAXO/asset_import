@@ -10,10 +10,10 @@ requires:
 
 page:
     title: 'translate:asset_import_title'
-    perm: admin[]
     icon: rex-icon fa-cloud-download
     subpages:
         main: 
             title: 'translate:asset_import_media'
         config:
             title: 'translate:asset_import_settings'
+            perm: admin[]
