@@ -3,12 +3,15 @@ namespace FriendsOfRedaxo\AssetImport\Provider;
 
 use FriendsOfRedaxo\AssetImport\Asset\AbstractProvider;
 use Psr\Log\LogLevel;
+use rex_media;
+use rex_media_manager;
 
 class PixabayProvider extends AbstractProvider
 {
     protected string $apiUrl = 'https://pixabay.com/api/';
     protected string $apiUrlVideos = 'https://pixabay.com/api/videos/';
     protected int $itemsPerPage = 20;
+    protected array $currentAssetInfo = [];
 
     public function getName(): string
     {
@@ -60,7 +63,7 @@ class PixabayProvider extends AbstractProvider
             $results = [];
             $totalHits = 0;
 
-            // Bei 'all' oder 'image' nach Bildern suchen
+            // Search for images if type is 'all' or 'image'
             if ($type === 'all' || $type === 'image') {
                 $imageParams = [
                     'key' => $this->config['apikey'],
@@ -93,7 +96,7 @@ class PixabayProvider extends AbstractProvider
                 }
             }
 
-            // Bei 'all' oder 'video' nach Videos suchen
+            // Search for videos if type is 'all' or 'video'
             if ($type === 'all' || $type === 'video') {
                 $videoParams = [
                     'key' => $this->config['apikey'],
@@ -123,7 +126,6 @@ class PixabayProvider extends AbstractProvider
                     }, $videoResults['hits']);
                     
                     if ($type === 'all') {
-                        // Bei 'all' die Results zusammenführen und Durchschnitt der Gesamttreffer berechnen
                         $results = array_merge($results, $videoItems);
                         $totalHits = intval(($totalHits + $videoResults['totalHits']) / 2);
                     } else {
@@ -197,8 +199,61 @@ class PixabayProvider extends AbstractProvider
             $extension = strpos($url, 'vimeocdn.com') !== false ? 'mp4' : 'jpg';
         }
         
+        // Extract author from the title/filename
+        $parts = explode(',', $filename);
+        $author = trim(end($parts));
+        
+        // Store asset info for use in setMediaMetadata
+        $this->currentAssetInfo = [
+            'copyright' => sprintf('Pixabay, %s', $author)
+        ];
+        
         $filename = $filename . '.' . $extension;
-
         return $this->downloadFile($url, $filename);
+    }
+
+    protected function ensureCopyrightField(): void
+    {
+        $sql = rex_sql::factory();
+        $sql->setQuery('SHOW COLUMNS FROM ' . rex::getTable('media') . ' LIKE "med_copyright"');
+        
+        if ($sql->getRows() === 0) {
+            // Feld existiert noch nicht, also anlegen
+            $sql->setQuery('ALTER TABLE ' . rex::getTable('media') . ' ADD med_copyright VARCHAR(255) DEFAULT NULL');
+        }
+    }
+
+    protected function setMediaMetadata(string $filename): void
+    {
+        // Prüfen ob das Copyright-Feld existiert
+        $sql = rex_sql::factory();
+        $sql->setQuery('SHOW COLUMNS FROM ' . rex::getTable('media') . ' LIKE "med_copyright"');
+        
+        // Nur speichern wenn das Feld existiert
+        if ($sql->getRows() > 0 && !empty($this->currentAssetInfo)) {
+            $media = rex_media::get($filename);
+            if ($media) {
+                $sql = rex_sql::factory();
+                $sql->setTable(rex::getTable('media'));
+                $sql->setWhere(['filename' => $filename]);
+                $sql->setValue('med_copyright', $this->currentAssetInfo['copyright']);
+                $sql->update();
+            }
+        }
+        
+        // Reset current asset info
+        $this->currentAssetInfo = [];
+    }
+
+    protected function downloadFile(string $url, string $filename): bool
+    {
+        $success = parent::downloadFile($url, $filename);
+        
+        if ($success) {
+            // Set metadata after successful download
+            $this->setMediaMetadata($filename);
+        }
+        
+        return $success;
     }
 }
