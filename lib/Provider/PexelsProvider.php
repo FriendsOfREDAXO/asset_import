@@ -8,7 +8,7 @@ class PexelsProvider extends AbstractProvider
 {
     protected string $apiUrl = 'https://api.pexels.com/v1/';
     protected string $apiUrlVideos = 'https://api.pexels.com/videos/';
-    protected int $itemsPerPage = 20;
+    protected int $itemsPerPage = 40;
 
     public function getName(): string
     {
@@ -333,9 +333,7 @@ class PexelsProvider extends AbstractProvider
             CURLOPT_SSL_VERIFYPEER => true,
             CURLOPT_TIMEOUT => 20,
             CURLOPT_HTTPHEADER => [
-                'Authorization: ' . $apiKey,
-                'Accept: application/json',
-                'User-Agent: REDAXO Asset Import'
+                'Authorization: ' . $apiKey
             ]
         ]);
 
