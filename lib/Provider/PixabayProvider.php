@@ -3,6 +3,7 @@ namespace FriendsOfRedaxo\AssetImport\Provider;
 
 use FriendsOfRedaxo\AssetImport\Asset\AbstractProvider;
 use Psr\Log\LogLevel;
+use rex;
 use rex_media;
 use rex_media_manager;
 use rex_sql;
