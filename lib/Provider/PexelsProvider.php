@@ -254,59 +254,75 @@ class PexelsProvider extends AbstractProvider
         if ($type === 'video') {
             // Sortiere Video-Files nach Qualität (HD zuerst)
             $videoFiles = $item['video_files'] ?? [];
-            usort($videoFiles, function($a, $b) {
-                return $b['height'] <=> $a['height'];
-            });
-
-            // Gruppiere Videos nach Qualität
+            
+            // Gruppiere nach Qualität
             $sizes = [];
             foreach ($videoFiles as $file) {
-                $quality = $file['quality'] ?? 'sd';
-                if ($quality === 'hd' && !isset($sizes['large'])) {
-                    $sizes['large'] = ['url' => $file['link']];
-                } elseif ($quality === 'sd') {
-                    if (!isset($sizes['medium']) && $file['height'] >= 720) {
-                        $sizes['medium'] = ['url' => $file['link']];
-                    } elseif (!isset($sizes['small']) && $file['height'] >= 480) {
-                        $sizes['small'] = ['url' => $file['link']];
-                    } elseif (!isset($sizes['tiny'])) {
-                        $sizes['tiny'] = ['url' => $file['link']];
+                $height = $file['height'] ?? 0;
+                $link = $file['link'] ?? '';
+                
+                if (empty($link)) continue;
+
+                if ($height >= 1080) {
+                    $sizes['large'] = ['url' => $link];
+                } elseif ($height >= 720) {
+                    $sizes['medium'] = ['url' => $link];
+                } elseif ($height >= 480) {
+                    $sizes['small'] = ['url' => $link];
+                } else {
+                    $sizes['tiny'] = ['url' => $link];
+                }
+            }
+
+            // Stelle sicher, dass alle Größen vorhanden sind
+            if (!empty($videoFiles)) {
+                $fallbackUrl = '';
+                // Suche die beste verfügbare Qualität als Fallback
+                foreach ($videoFiles as $file) {
+                    if (!empty($file['link'])) {
+                        $fallbackUrl = $file['link'];
+                        break;
+                    }
+                }
+
+                // Setze Fallback für fehlende Größen
+                $requiredSizes = ['tiny', 'small', 'medium', 'large'];
+                foreach ($requiredSizes as $size) {
+                    if (!isset($sizes[$size])) {
+                        $sizes[$size] = ['url' => $fallbackUrl];
                     }
                 }
             }
 
-            // Stelle sicher, dass wir alle Größen haben
-            if (!empty($videoFiles)) {
-                $defaultUrl = $videoFiles[0]['link'];
-                $sizes['large'] = $sizes['large'] ?? ['url' => $defaultUrl];
-                $sizes['medium'] = $sizes['medium'] ?? ['url' => $defaultUrl];
-                $sizes['small'] = $sizes['small'] ?? ['url' => $defaultUrl];
-                $sizes['tiny'] = $sizes['tiny'] ?? ['url' => $defaultUrl];
-            }
+            \rex_logger::factory()->log(\Psr\Log\LogLevel::DEBUG, 'Formatted video sizes: {sizes}', ['sizes' => $sizes], __FILE__, __LINE__);
 
             return [
                 'id' => $item['id'],
                 'preview_url' => $item['image'] ?? '',
-                'title' => $item['duration'] ? sprintf('Video (%ds) - %s', $item['duration'], $item['url']) : 'Video',
+                'title' => $item['duration'] ? sprintf('Video (%ds)', $item['duration']) : 'Video',
                 'author' => $item['user']['name'] ?? 'Pexels',
                 'type' => 'video',
                 'size' => $sizes
             ];
         }
         
-        // Für Bilder - laut API-Dokumentation
+        // Für Bilder
+        $sizes = [
+            'tiny' => ['url' => $item['src']['tiny'] ?? $item['src']['small'] ?? ''],
+            'small' => ['url' => $item['src']['small'] ?? $item['src']['medium'] ?? ''],
+            'medium' => ['url' => $item['src']['medium'] ?? $item['src']['large'] ?? ''],
+            'large' => ['url' => $item['src']['original'] ?? $item['src']['large2x'] ?? $item['src']['large'] ?? '']
+        ];
+
+        \rex_logger::factory()->log(\Psr\Log\LogLevel::DEBUG, 'Formatted image sizes: {sizes}', ['sizes' => $sizes], __FILE__, __LINE__);
+
         return [
             'id' => $item['id'],
-            'preview_url' => $item['src']['medium'] ?? '',
+            'preview_url' => $item['src']['medium'] ?? $item['src']['small'] ?? '',
             'title' => $item['alt'] ?? $item['photographer'] ?? 'Image',
             'author' => $item['photographer'] ?? 'Pexels',
             'type' => 'image',
-            'size' => [
-                'tiny' => ['url' => $item['src']['tiny'] ?? ''],
-                'small' => ['url' => $item['src']['small'] ?? ''],
-                'medium' => ['url' => $item['src']['medium'] ?? ''],
-                'large' => ['url' => $item['src']['original'] ?? $item['src']['large2x'] ?? $item['src']['large'] ?? '']
-            ]
+            'size' => $sizes
         ];
     }
 
