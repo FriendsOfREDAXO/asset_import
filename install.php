@@ -13,3 +13,9 @@ if (!$this->hasConfig()) {
     ->setPrimaryKey('id')
     ->ensureIndex(new \rex_sql_index('provider_cache', ['provider', 'cache_key']))
     ->ensure();
+
+// Add meta info field for copyright if it doesn't exist
+if (rex_metainfo_add_field('copyright', 'translate:media_copyright', 1, '', 1, '', '', '', '')) {
+    // Field successfully added
+    rex_delete_cache();
+}
