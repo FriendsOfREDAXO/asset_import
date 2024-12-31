@@ -8,6 +8,50 @@ $(document).on('rex:ready', function() {
         init: function() {
             this.bindEvents();
             this.resetResults();
+            this.initModal();
+        },
+        
+        initModal: function() {
+            $('body').append(`
+                <div class="modal fade" id="asset-preview-modal" tabindex="-1" role="dialog">
+                    <div class="modal-dialog modal-xl" role="document">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h4 class="modal-title"></h4>
+                                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                    <span aria-hidden="true">&times;</span>
+                                </button>
+                            </div>
+                            <div class="modal-body text-center">
+                                <div class="preview-container" style="max-height: 80vh; overflow: hidden;">
+                                    <div class="preview-content"></div>
+                                </div>
+                                <div class="asset-details mt-3">
+                                    <table class="table table-sm">
+                                        <tbody>
+                                            <tr><th>Title:</th><td class="detail-title"></td></tr>
+                                            <tr><th>Author:</th><td class="detail-author"></td></tr>
+                                            <tr><th>Type:</th><td class="detail-type"></td></tr>
+                                            <tr><th>Source:</th><td class="detail-source"></td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal fade" id="success-modal" tabindex="-1" role="dialog">
+                    <div class="modal-dialog modal-sm" role="document">
+                        <div class="modal-content">
+                            <div class="modal-body text-center">
+                                <i class="rex-icon fa-check-circle text-success" style="font-size: 48px;"></i>
+                                <h4 class="mt-2"></h4>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `);
         },
         
         bindEvents: function() {
@@ -37,6 +81,36 @@ $(document).on('rex:ready', function() {
                 
                 this.import(url, filename, btn);
             });
+
+            $(document).on('click', '.asset-import-preview', (e) => {
+                e.preventDefault();
+                const item = $(e.currentTarget).closest('.asset-import-item');
+                this.showPreviewModal(item);
+            });
+        },
+        
+        showPreviewModal: function(item) {
+            const modal = $('#asset-preview-modal');
+            const type = item.data('type');
+            const previewUrl = item.data('largest-preview');
+            const title = item.find('.asset-import-title').text();
+            const author = item.data('author');
+            const source = item.data('source');
+            
+            modal.find('.modal-title').text(title);
+            modal.find('.detail-title').text(title);
+            modal.find('.detail-author').text(author);
+            modal.find('.detail-type').text(type.charAt(0).toUpperCase() + type.slice(1));
+            modal.find('.detail-source').text(source);
+            
+            const content = type === 'video' 
+                ? `<video controls style="max-width: 100%; max-height: 70vh;">
+                     <source src="${previewUrl}" type="video/mp4">
+                   </video>`
+                : `<img src="${previewUrl}" style="max-width: 100%; max-height: 70vh; object-fit: contain;">`;
+            
+            modal.find('.preview-content').html(content);
+            modal.modal('show');
         },
         
         resetResults: function() {
@@ -91,11 +165,20 @@ $(document).on('rex:ready', function() {
             }
             
             data.items.forEach(item => {
+                // Find largest preview URL for modal
+                const largestPreview = item.type === 'video' 
+                    ? item.size.large?.url || item.size.medium?.url || item.preview_url
+                    : item.size.large?.url || item.size.original?.url || item.preview_url;
+                
                 html += `
-                    <div class="asset-import-item">
+                    <div class="asset-import-item" 
+                         data-type="${item.type}"
+                         data-author="${item.author}"
+                         data-source="${this.getProviderTitle()}"
+                         data-largest-preview="${largestPreview}">
                         <div class="asset-import-preview">
                             ${item.type === 'video' ? `
-                                <video controls>
+                                <video>
                                     <source src="${item.size.tiny.url}" type="video/mp4">
                                 </video>
                             ` : `
@@ -137,8 +220,12 @@ $(document).on('rex:ready', function() {
             
             this.showStatus('results', data.total);
 
-            // Initialize bootstrap-select for newly added selects
             $('.selectpicker').selectpicker();
+        },
+        
+        getProviderTitle: function() {
+            const provider = $('#asset-import-provider option:selected').text();
+            return provider || '';
         },
         
         import: function(url, filename, btn) {
@@ -146,7 +233,6 @@ $(document).on('rex:ready', function() {
             const progress = item.find('.progress');
             const categoryId = $('#rex-mediapool-category').val();
             
-            // Hide button and show progress
             btn.hide();
             progress.show();
             
@@ -163,7 +249,7 @@ $(document).on('rex:ready', function() {
                 },
                 success: (response) => {
                     if (response.success) {
-                        this.showSuccess('Asset successfully imported');
+                        this.showSuccessModal('Asset successfully imported');
                         setTimeout(() => {
                             progress.hide();
                             btn.show();
@@ -180,6 +266,13 @@ $(document).on('rex:ready', function() {
                     btn.show();
                 }
             });
+        },
+        
+        showSuccessModal: function(message) {
+            const modal = $('#success-modal');
+            modal.find('.modal-body h4').text(message);
+            modal.modal('show');
+            setTimeout(() => modal.modal('hide'), 2000);
         },
         
         showStatus: function(type, total = 0) {
@@ -219,18 +312,6 @@ $(document).on('rex:ready', function() {
             setTimeout(() => {
                 $('#asset-import-status').fadeOut();
             }, 5000);
-        },
-        
-        showSuccess: function(message) {
-            $('#asset-import-status')
-                .removeClass('alert-danger')
-                .addClass('alert-info')
-                .text(message)
-                .show();
-                
-            setTimeout(() => {
-                $('#asset-import-status').fadeOut();
-            }, 3000);
         }
     };
     
