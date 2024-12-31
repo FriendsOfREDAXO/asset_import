@@ -3,18 +3,12 @@ namespace FriendsOfRedaxo\AssetImport\Provider;
 
 use FriendsOfRedaxo\AssetImport\Asset\AbstractProvider;
 use Psr\Log\LogLevel;
-use rex;
-use rex_media;
-use rex_media_manager;
-use rex_sql;
 
 class PixabayProvider extends AbstractProvider
 {
     protected string $apiUrl = 'https://pixabay.com/api/';
     protected string $apiUrlVideos = 'https://pixabay.com/api/videos/';
     protected int $itemsPerPage = 20;
-    protected array $currentAssetInfo = [];
-    protected array $currentItemData = [];
 
     public function getName(): string
     {
@@ -55,9 +49,52 @@ class PixabayProvider extends AbstractProvider
         ];
     }
 
-    public function setCurrentItemData(array $data): void
+    /**
+     * Extract image ID from Pixabay URL
+     */
+    protected function extractImageIdFromUrl(string $url): ?int
     {
-        $this->currentItemData = $data;
+        // Match URLs like https://pixabay.com/photos/moers-safety-lamp-landmark-night-4854105/
+        // or https://pixabay.com/videos/stars-night-sky-star-night-sky-31277/
+        if (preg_match('#pixabay\.com/(?:photos|videos)/[^/]+-(\d+)/?$#i', $url, $matches)) {
+            return (int)$matches[1];
+        }
+        return null;
+    }
+
+    /**
+     * Check if input is a Pixabay URL
+     */
+    protected function isPixabayUrl(string $query): bool
+    {
+        return (bool)preg_match('#^https?://(?:www\.)?pixabay\.com/(?:photos|videos)/#i', $query);
+    }
+
+    /**
+     * Get single image by ID
+     */
+    protected function getById(int $id, string $type = 'image'): ?array
+    {
+        $params = [
+            'key' => $this->config['apikey'],
+            'id' => $id,
+            'safesearch' => 'true',
+            'lang' => 'de'
+        ];
+
+        $baseUrl = ($type === 'video') ? $this->apiUrlVideos : $this->apiUrl;
+        
+        if ($type === 'image') {
+            $params['image_type'] = 'all';
+        }
+
+        $result = $this->makeApiRequest($baseUrl, $params);
+        
+        if ($result && !empty($result['hits'])) {
+            return $result['hits'][0];
+        }
+
+        return null;
     }
 
     protected function searchApi(string $query, int $page = 1, array $options = []): array
@@ -67,10 +104,38 @@ class PixabayProvider extends AbstractProvider
                 throw new \rex_exception('Pixabay API key not configured');
             }
 
+            // Check if query is a Pixabay URL
+            if ($this->isPixabayUrl($query)) {
+                $imageId = $this->extractImageIdFromUrl($query);
+                if ($imageId) {
+                    // Try image first
+                    $item = $this->getById($imageId, 'image');
+                    $type = 'image';
+                    
+                    // If not found, try video
+                    if (!$item) {
+                        $item = $this->getById($imageId, 'video');
+                        $type = 'video';
+                    }
+                    
+                    if ($item) {
+                        $formattedItem = $this->formatItem($item, $type);
+                        return [
+                            'items' => [$formattedItem],
+                            'total' => 1,
+                            'page' => 1,
+                            'total_pages' => 1
+                        ];
+                    }
+                }
+                // If URL parsing failed, fall back to normal search
+            }
+
             $type = $options['type'] ?? 'image';
             $results = [];
             $totalHits = 0;
 
+            // Bei 'all' oder 'image' nach Bildern suchen
             if ($type === 'all' || $type === 'image') {
                 $imageParams = [
                     'key' => $this->config['apikey'],
@@ -84,25 +149,15 @@ class PixabayProvider extends AbstractProvider
                 
                 $imageResults = $this->makeApiRequest($this->apiUrl, $imageParams);
                 if ($imageResults) {
-                    $results = array_map(function($item) {
-                        return [
-                            'id' => $item['id'],
-                            'preview_url' => $item['webformatURL'],
-                            'title' => $item['tags'],
-                            'author' => $item['user'],
-                            'type' => 'image',
-                            'size' => [
-                                'preview' => ['url' => $item['previewURL']],
-                                'web' => ['url' => $item['webformatURL']],
-                                'large' => ['url' => $item['largeImageURL']],
-                                'original' => ['url' => $item['imageURL'] ?? $item['largeImageURL']]
-                            ]
-                        ];
-                    }, $imageResults['hits']);
+                    $results = array_map(
+                        fn($item) => $this->formatItem($item, 'image'),
+                        $imageResults['hits']
+                    );
                     $totalHits = $imageResults['totalHits'];
                 }
             }
 
+            // Bei 'all' oder 'video' nach Videos suchen
             if ($type === 'all' || $type === 'video') {
                 $videoParams = [
                     'key' => $this->config['apikey'],
@@ -115,21 +170,10 @@ class PixabayProvider extends AbstractProvider
                 
                 $videoResults = $this->makeApiRequest($this->apiUrlVideos, $videoParams);
                 if ($videoResults) {
-                    $videoItems = array_map(function($item) {
-                        return [
-                            'id' => $item['id'],
-                            'preview_url' => $item['picture_id'] ? "https://i.vimeocdn.com/video/{$item['picture_id']}_640x360.jpg" : '',
-                            'title' => $item['tags'],
-                            'author' => $item['user'],
-                            'type' => 'video',
-                            'size' => [
-                                'tiny' => ['url' => $item['videos']['tiny']['url']],
-                                'small' => ['url' => $item['videos']['small']['url']],
-                                'medium' => ['url' => $item['videos']['medium']['url']],
-                                'large' => ['url' => $item['videos']['large']['url'] ?? $item['videos']['medium']['url']]
-                            ]
-                        ];
-                    }, $videoResults['hits']);
+                    $videoItems = array_map(
+                        fn($item) => $this->formatItem($item, 'video'),
+                        $videoResults['hits']
+                    );
                     
                     if ($type === 'all') {
                         $results = array_merge($results, $videoItems);
@@ -141,6 +185,7 @@ class PixabayProvider extends AbstractProvider
                 }
             }
 
+            // Ensure we never return more than itemsPerPage results
             $results = array_slice($results, 0, $this->itemsPerPage);
 
             return [
@@ -154,6 +199,42 @@ class PixabayProvider extends AbstractProvider
             \rex_logger::factory()->log(LogLevel::ERROR, 'Exception in searchApi: {message}', ['message' => $e->getMessage()], __FILE__, __LINE__);
             return [];
         }
+    }
+
+    /**
+     * Format API item to standardized response
+     */
+    protected function formatItem(array $item, string $type): array
+    {
+        if ($type === 'video') {
+            return [
+                'id' => $item['id'],
+                'preview_url' => $item['picture_id'] ? "https://i.vimeocdn.com/video/{$item['picture_id']}_640x360.jpg" : '',
+                'title' => $item['tags'],
+                'author' => $item['user'],
+                'type' => 'video',
+                'size' => [
+                    'tiny' => ['url' => $item['videos']['tiny']['url']],
+                    'small' => ['url' => $item['videos']['small']['url']],
+                    'medium' => ['url' => $item['videos']['medium']['url']],
+                    'large' => ['url' => $item['videos']['large']['url'] ?? $item['videos']['medium']['url']]
+                ]
+            ];
+        }
+        
+        return [
+            'id' => $item['id'],
+            'preview_url' => $item['webformatURL'],
+            'title' => $item['tags'],
+            'author' => $item['user'],
+            'type' => 'image',
+            'size' => [
+                'preview' => ['url' => $item['previewURL']],
+                'web' => ['url' => $item['webformatURL']],
+                'large' => ['url' => $item['largeImageURL']],
+                'original' => ['url' => $item['imageURL'] ?? $item['largeImageURL']]
+            ]
+        ];
     }
 
     protected function makeApiRequest(string $url, array $params): ?array
@@ -204,48 +285,8 @@ class PixabayProvider extends AbstractProvider
             $extension = strpos($url, 'vimeocdn.com') !== false ? 'mp4' : 'jpg';
         }
         
-        // Store the author from the current item data
-        if (!empty($this->currentItemData['author'])) {
-            $this->currentAssetInfo = [
-                'copyright' => sprintf('Pixabay, %s', $this->currentItemData['author'])
-            ];
-        }
-        
         $filename = $filename . '.' . $extension;
+
         return $this->downloadFile($url, $filename);
-    }
-
-    protected function setMediaMetadata(string $filename): void
-    {
-        // Prüfen ob das Copyright-Feld existiert
-        $sql = rex_sql::factory();
-        $sql->setQuery('SHOW COLUMNS FROM ' . rex::getTable('media') . ' LIKE "med_copyright"');
-        
-        // Nur speichern wenn das Feld existiert
-        if ($sql->getRows() > 0 && !empty($this->currentAssetInfo)) {
-            $media = rex_media::get($filename);
-            if ($media) {
-                $sql = rex_sql::factory();
-                $sql->setTable(rex::getTable('media'));
-                $sql->setWhere(['filename' => $filename]);
-                $sql->setValue('med_copyright', $this->currentAssetInfo['copyright']);
-                $sql->update();
-            }
-        }
-        
-        // Reset current asset info
-        $this->currentAssetInfo = [];
-    }
-
-    protected function downloadFile(string $url, string $filename): bool
-    {
-        $success = parent::downloadFile($url, $filename);
-        
-        if ($success) {
-            // Set metadata after successful download
-            $this->setMediaMetadata($filename);
-        }
-        
-        return $success;
     }
 }
