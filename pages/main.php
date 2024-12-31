@@ -3,12 +3,21 @@ namespace FriendsOfRedaxo\AssetImport;
 
 $providers = AssetImporter::getProviders();
 
-if (empty($providers)) {
-    echo \rex_view::error(\rex_i18n::msg('asset_import_provider_missing'));
+// Check if we have any configured providers
+$configuredProviders = [];
+foreach ($providers as $id => $class) {
+    $provider = new $class();
+    if ($provider->isConfigured()) {
+        $configuredProviders[$id] = $class;
+    }
+}
+
+if (empty($configuredProviders)) {
+    echo \rex_view::error(\rex_i18n::msg('asset_import_provider_error'));
     return;
 }
 
-// Medienpool Kategorien laden
+// Load media categories
 $cats_sel = new \rex_media_category_select();
 $cats_sel->setStyle('class="form-control"');
 $cats_sel->setName('category_id');
@@ -19,7 +28,7 @@ $cats_sel->setAttribute('class', 'form-control selectpicker');
 $content = '
 <div class="asset-import-container">
     <div class="row">
-        <!-- Kategorie-Auswahl -->
+        <!-- Category selection -->
         <div class="col-sm-4">
             <div class="panel panel-default">
                 <header class="panel-heading">
@@ -31,7 +40,7 @@ $content = '
             </div>
         </div>
         
-        <!-- Suchbereich -->
+        <!-- Search area -->
         <div class="col-sm-8">
             <div class="panel panel-default">
                 <header class="panel-heading">
@@ -46,7 +55,7 @@ $content = '
                                 <div class="col-sm-3">
                                     <select name="provider" class="form-control selectpicker" id="asset-import-provider">';
                                     
-foreach ($providers as $id => $class) {
+foreach ($configuredProviders as $id => $class) {
     $provider = new $class();
     $content .= '<option value="' . $id . '">' . $provider->getTitle() . '</option>';
 }
@@ -85,10 +94,10 @@ $content .= '
         </div>
     </div>
     
-    <!-- Status und Fehler -->
+    <!-- Status and error messages -->
     <div id="asset-import-status" class="alert" style="display: none;"></div>
     
-    <!-- Ergebnisse -->
+    <!-- Results -->
     <div class="panel panel-default">
         <div class="panel-body">
             <div id="asset-import-results" class="asset-import-results"></div>
