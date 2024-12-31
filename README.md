@@ -1,6 +1,6 @@
 # Asset Import für REDAXO
 
-Ein AddOn zum Importieren von Medien aus verschiedenen Quellen (Pixabay, Unsplash etc.) direkt in den REDAXO Medienpool.
+Ein AddOn zum Importieren von Medien aus verschiedenen Quellen (Pixabay, Pexels etc.) direkt in den REDAXO Medienpool.
 
 ## Features
 

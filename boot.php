@@ -10,18 +10,18 @@ use rex_request;
 use rex_response;
 use rex_view;
 use rex_addon;
-
+// Registriere Basis-Provider
+use FriendsOfRedaxo\AssetImport\Provider\PixabayProvider;
+use FriendsOfRedaxo\AssetImport\Provider\PexelsProvider;
 // Start session für CSRF-Protection
 if (rex_backend_login::hasSession()) {
    rex_csrf_token::factory('asset_import');
 }
 
-// Registriere Basis-Provider
-use FriendsOfRedaxo\AssetImport\Provider\PixabayProvider;
 
 
-   AssetImporter::registerProvider(PixabayProvider::class);
-
+AssetImporter::registerProvider(PixabayProvider::class);
+AssetImporter::registerProvider(PexelsProvider::class);
 
 // Nur im Backend ausführen
 if (rex::isBackend() && rex::getUser()) {
