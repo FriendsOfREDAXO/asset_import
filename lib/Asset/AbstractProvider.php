@@ -73,7 +73,7 @@ abstract class AbstractProvider implements ProviderInterface
 
     protected function cacheResponse(string $cacheKey, array $response): void
     {
-        // Alte Cache-Einträge löschen
+        // Delete old cache entries
         $sql = \rex_sql::factory();
         $sql->setQuery('
             DELETE FROM ' . \rex::getTable('asset_import_cache') . '
@@ -85,7 +85,7 @@ abstract class AbstractProvider implements ProviderInterface
             ]
         );
 
-        // Neuen Cache-Eintrag erstellen
+        // Create new cache entry
         $sql = \rex_sql::factory();
         $sql->setTable(\rex::getTable('asset_import_cache'));
         $sql->setValue('provider', $this->getName());
@@ -141,8 +141,17 @@ abstract class AbstractProvider implements ProviderInterface
                 ];
                 
                 $result = \rex_media_service::addMedia($media, true);
-                unlink($tmpFile);
                 
+                // Add copyright information if meta field exists
+                if ($result && \rex_metainfo_get_fields('med_copyright')) {
+                    $sql = \rex_sql::factory();
+                    $sql->setTable(\rex::getTable('media'));
+                    $sql->setWhere(['filename' => $filename]);
+                    $sql->setValue('med_copyright', $this->getTitle() . ' / ' . $this->getAuthor());
+                    $sql->update();
+                }
+                
+                unlink($tmpFile);
                 return $result !== false;
             }
             
@@ -155,5 +164,10 @@ abstract class AbstractProvider implements ProviderInterface
             }
             return false;
         }
+    }
+
+    protected function getAuthor(): string 
+    {
+        return '';
     }
 }
