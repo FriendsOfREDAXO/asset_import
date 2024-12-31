@@ -127,35 +127,67 @@ class PexelsProvider extends AbstractProvider
             $results = [];
             $totalHits = 0;
 
+            // Erhöhe die Anzahl der Ergebnisse pro Seite
+            $perPage = $this->itemsPerPage * 2;
+
             // Search for images
             if ($type === 'all' || $type === 'image') {
+                // Versuche zuerst eine kuratierte Suche
                 $imageResults = $this->makeApiRequest(
-                    $this->apiUrl . 'search',
+                    $this->apiUrl . 'curated',
                     [
-                        'query' => $query,
                         'page' => $page,
-                        'per_page' => $type === 'all' ? intval($this->itemsPerPage / 2) : $this->itemsPerPage
+                        'per_page' => $type === 'all' ? intval($perPage / 2) : $perPage
                     ]
                 );
 
-                if ($imageResults && isset($imageResults['photos'])) {
+                // Wenn ein Suchbegriff vorhanden ist, führe auch eine normale Suche durch
+                if (!empty($query)) {
+                    $searchResults = $this->makeApiRequest(
+                        $this->apiUrl . 'search',
+                        [
+                            'query' => $query,
+                            'page' => $page,
+                            'per_page' => $type === 'all' ? intval($perPage / 2) : $perPage,
+                            'orientation' => 'landscape'  // Bevorzuge Landscape-Orientierung
+                        ]
+                    );
+
+                    if ($searchResults && isset($searchResults['photos'])) {
+                        $results = array_map(
+                            fn($item) => $this->formatItem($item, 'image'),
+                            $searchResults['photos']
+                        );
+                        $totalHits = $searchResults['total_results'];
+                    }
+                } 
+                // Wenn keine Suchergebnisse oder kein Suchbegriff, verwende kuratierte Ergebnisse
+                elseif ($imageResults && isset($imageResults['photos'])) {
                     $results = array_map(
                         fn($item) => $this->formatItem($item, 'image'),
                         $imageResults['photos']
                     );
-                    $totalHits = $imageResults['total_results'];
+                    $totalHits = count($imageResults['photos']) * 10; // Schätzung der Gesamtanzahl
                 }
             }
 
             // Search for videos
             if ($type === 'all' || $type === 'video') {
+                $videoParams = [
+                    'page' => $page,
+                    'per_page' => $type === 'all' ? intval($perPage / 2) : $perPage
+                ];
+
+                if (!empty($query)) {
+                    $videoParams['query'] = $query;
+                    $endpoint = 'search';
+                } else {
+                    $endpoint = 'popular'; // Verwende populäre Videos wenn kein Suchbegriff
+                }
+
                 $videoResults = $this->makeApiRequest(
-                    $this->apiUrlVideos . 'search',
-                    [
-                        'query' => $query,
-                        'page' => $page,
-                        'per_page' => $type === 'all' ? intval($this->itemsPerPage / 2) : $this->itemsPerPage
-                    ]
+                    $this->apiUrlVideos . $endpoint,
+                    $videoParams
                 );
 
                 if ($videoResults && isset($videoResults['videos'])) {
@@ -166,22 +198,30 @@ class PexelsProvider extends AbstractProvider
                     
                     if ($type === 'all') {
                         $results = array_merge($results, $videoItems);
-                        $totalHits = intval(($totalHits + $videoResults['total_results']) / 2);
+                        $totalHits = isset($videoResults['total_results']) 
+                            ? intval(($totalHits + $videoResults['total_results']) / 2)
+                            : $totalHits + count($videoResults['videos']) * 10;
                     } else {
                         $results = $videoItems;
-                        $totalHits = $videoResults['total_results'];
+                        $totalHits = $videoResults['total_results'] ?? count($videoResults['videos']) * 10;
                     }
                 }
             }
 
-            // Ensure we never return more than itemsPerPage results
-            $results = array_slice($results, 0, $this->itemsPerPage);
+            // Entferne Duplikate basierend auf der ID
+            $results = array_values(array_reduce($results, function($carry, $item) {
+                $carry[$item['id']] = $item;
+                return $carry;
+            }, []));
+
+            // Stelle sicher, dass wir nicht mehr als die maximale Anzahl zurückgeben
+            $results = array_slice($results, 0, $perPage);
 
             return [
                 'items' => $results,
                 'total' => $totalHits,
                 'page' => $page,
-                'total_pages' => ceil($totalHits / $this->itemsPerPage)
+                'total_pages' => max(1, ceil($totalHits / $perPage))
             ];
             
         } catch (\Exception $e) {
