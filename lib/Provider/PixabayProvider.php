@@ -49,11 +49,86 @@ class PixabayProvider extends AbstractProvider
         ];
     }
 
+    /**
+     * Extract image ID from Pixabay URL
+     */
+    protected function extractImageIdFromUrl(string $url): ?int
+    {
+        // Match URLs like https://pixabay.com/photos/moers-safety-lamp-landmark-night-4854105/
+        // or https://pixabay.com/videos/stars-night-sky-star-night-sky-31277/
+        if (preg_match('#pixabay\.com/(?:photos|videos)/[^/]+-(\d+)/?$#i', $url, $matches)) {
+            return (int)$matches[1];
+        }
+        return null;
+    }
+
+    /**
+     * Check if input is a Pixabay URL
+     */
+    protected function isPixabayUrl(string $query): bool
+    {
+        return (bool)preg_match('#^https?://(?:www\.)?pixabay\.com/(?:photos|videos)/#i', $query);
+    }
+
+    /**
+     * Get single image by ID
+     */
+    protected function getById(int $id, string $type = 'image'): ?array
+    {
+        $params = [
+            'key' => $this->config['apikey'],
+            'id' => $id,
+            'safesearch' => 'true',
+            'lang' => 'de'
+        ];
+
+        $baseUrl = ($type === 'video') ? $this->apiUrlVideos : $this->apiUrl;
+        
+        if ($type === 'image') {
+            $params['image_type'] = 'all';
+        }
+
+        $result = $this->makeApiRequest($baseUrl, $params);
+        
+        if ($result && !empty($result['hits'])) {
+            return $result['hits'][0];
+        }
+
+        return null;
+    }
+
     protected function searchApi(string $query, int $page = 1, array $options = []): array
     {
         try {
             if (!$this->isConfigured()) {
                 throw new \rex_exception('Pixabay API key not configured');
+            }
+
+            // Check if query is a Pixabay URL
+            if ($this->isPixabayUrl($query)) {
+                $imageId = $this->extractImageIdFromUrl($query);
+                if ($imageId) {
+                    // Try image first
+                    $item = $this->getById($imageId, 'image');
+                    $type = 'image';
+                    
+                    // If not found, try video
+                    if (!$item) {
+                        $item = $this->getById($imageId, 'video');
+                        $type = 'video';
+                    }
+                    
+                    if ($item) {
+                        $formattedItem = $this->formatItem($item, $type);
+                        return [
+                            'items' => [$formattedItem],
+                            'total' => 1,
+                            'page' => 1,
+                            'total_pages' => 1
+                        ];
+                    }
+                }
+                // If URL parsing failed, fall back to normal search
             }
 
             $type = $options['type'] ?? 'image';
@@ -74,21 +149,10 @@ class PixabayProvider extends AbstractProvider
                 
                 $imageResults = $this->makeApiRequest($this->apiUrl, $imageParams);
                 if ($imageResults) {
-                    $results = array_map(function($item) {
-                        return [
-                            'id' => $item['id'],
-                            'preview_url' => $item['webformatURL'],
-                            'title' => $item['tags'],
-                            'author' => $item['user'],
-                            'type' => 'image',
-                            'size' => [
-                                'preview' => ['url' => $item['previewURL']],
-                                'web' => ['url' => $item['webformatURL']],
-                                'large' => ['url' => $item['largeImageURL']],
-                                'original' => ['url' => $item['imageURL'] ?? $item['largeImageURL']]
-                            ]
-                        ];
-                    }, $imageResults['hits']);
+                    $results = array_map(
+                        fn($item) => $this->formatItem($item, 'image'),
+                        $imageResults['hits']
+                    );
                     $totalHits = $imageResults['totalHits'];
                 }
             }
@@ -106,24 +170,12 @@ class PixabayProvider extends AbstractProvider
                 
                 $videoResults = $this->makeApiRequest($this->apiUrlVideos, $videoParams);
                 if ($videoResults) {
-                    $videoItems = array_map(function($item) {
-                        return [
-                            'id' => $item['id'],
-                            'preview_url' => $item['picture_id'] ? "https://i.vimeocdn.com/video/{$item['picture_id']}_640x360.jpg" : '',
-                            'title' => $item['tags'],
-                            'author' => $item['user'],
-                            'type' => 'video',
-                            'size' => [
-                                'tiny' => ['url' => $item['videos']['tiny']['url']],
-                                'small' => ['url' => $item['videos']['small']['url']],
-                                'medium' => ['url' => $item['videos']['medium']['url']],
-                                'large' => ['url' => $item['videos']['large']['url'] ?? $item['videos']['medium']['url']]
-                            ]
-                        ];
-                    }, $videoResults['hits']);
+                    $videoItems = array_map(
+                        fn($item) => $this->formatItem($item, 'video'),
+                        $videoResults['hits']
+                    );
                     
                     if ($type === 'all') {
-                        // Bei 'all' die Results zusammenführen und Durchschnitt der Gesamttreffer berechnen
                         $results = array_merge($results, $videoItems);
                         $totalHits = intval(($totalHits + $videoResults['totalHits']) / 2);
                     } else {
@@ -147,6 +199,42 @@ class PixabayProvider extends AbstractProvider
             \rex_logger::factory()->log(LogLevel::ERROR, 'Exception in searchApi: {message}', ['message' => $e->getMessage()], __FILE__, __LINE__);
             return [];
         }
+    }
+
+    /**
+     * Format API item to standardized response
+     */
+    protected function formatItem(array $item, string $type): array
+    {
+        if ($type === 'video') {
+            return [
+                'id' => $item['id'],
+                'preview_url' => $item['picture_id'] ? "https://i.vimeocdn.com/video/{$item['picture_id']}_640x360.jpg" : '',
+                'title' => $item['tags'],
+                'author' => $item['user'],
+                'type' => 'video',
+                'size' => [
+                    'tiny' => ['url' => $item['videos']['tiny']['url']],
+                    'small' => ['url' => $item['videos']['small']['url']],
+                    'medium' => ['url' => $item['videos']['medium']['url']],
+                    'large' => ['url' => $item['videos']['large']['url'] ?? $item['videos']['medium']['url']]
+                ]
+            ];
+        }
+        
+        return [
+            'id' => $item['id'],
+            'preview_url' => $item['webformatURL'],
+            'title' => $item['tags'],
+            'author' => $item['user'],
+            'type' => 'image',
+            'size' => [
+                'preview' => ['url' => $item['previewURL']],
+                'web' => ['url' => $item['webformatURL']],
+                'large' => ['url' => $item['largeImageURL']],
+                'original' => ['url' => $item['imageURL'] ?? $item['largeImageURL']]
+            ]
+        ];
     }
 
     protected function makeApiRequest(string $url, array $params): ?array
