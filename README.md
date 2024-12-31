@@ -2,6 +2,8 @@
 
 Ein AddOn zum Importieren von Medien aus verschiedenen Quellen (Pixabay, Pexels etc.) direkt in den REDAXO Medienpool.
 
+![Screenshot](https://github.com/FriendsOfREDAXO/asset_import/blob/assets/screen.png?raw=true)
+
 ## Features
 
 - Bildsuche über verschiedene Provider
