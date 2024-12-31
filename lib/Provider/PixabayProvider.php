@@ -15,11 +15,6 @@ class PixabayProvider extends AbstractProvider
     protected int $itemsPerPage = 20;
     protected array $currentAssetInfo = [];
     protected array $currentItemData = [];
-    
-    public function setCurrentItemData(array $data): void
-    {
-        $this->currentItemData = $data;
-    }
 
     public function getName(): string
     {
@@ -60,6 +55,11 @@ class PixabayProvider extends AbstractProvider
         ];
     }
 
+    public function setCurrentItemData(array $data): void
+    {
+        $this->currentItemData = $data;
+    }
+
     protected function searchApi(string $query, int $page = 1, array $options = []): array
     {
         try {
@@ -71,7 +71,6 @@ class PixabayProvider extends AbstractProvider
             $results = [];
             $totalHits = 0;
 
-            // Search for images if type is 'all' or 'image'
             if ($type === 'all' || $type === 'image') {
                 $imageParams = [
                     'key' => $this->config['apikey'],
@@ -104,7 +103,6 @@ class PixabayProvider extends AbstractProvider
                 }
             }
 
-            // Search for videos if type is 'all' or 'video'
             if ($type === 'all' || $type === 'video') {
                 $videoParams = [
                     'key' => $this->config['apikey'],
@@ -143,7 +141,6 @@ class PixabayProvider extends AbstractProvider
                 }
             }
 
-            // Ensure we never return more than itemsPerPage results
             $results = array_slice($results, 0, $this->itemsPerPage);
 
             return [
@@ -194,8 +191,6 @@ class PixabayProvider extends AbstractProvider
         return $data;
     }
 
-    protected array $currentItemData = [];
-
     public function import(string $url, string $filename): bool
     {
         if (!$this->isConfigured()) {
@@ -218,17 +213,6 @@ class PixabayProvider extends AbstractProvider
         
         $filename = $filename . '.' . $extension;
         return $this->downloadFile($url, $filename);
-    }
-
-    protected function ensureCopyrightField(): void
-    {
-        $sql = rex_sql::factory();
-        $sql->setQuery('SHOW COLUMNS FROM ' . rex::getTable('media') . ' LIKE "med_copyright"');
-        
-        if ($sql->getRows() === 0) {
-            // Feld existiert noch nicht, also anlegen
-            $sql->setQuery('ALTER TABLE ' . rex::getTable('media') . ' ADD med_copyright VARCHAR(255) DEFAULT NULL');
-        }
     }
 
     protected function setMediaMetadata(string $filename): void
