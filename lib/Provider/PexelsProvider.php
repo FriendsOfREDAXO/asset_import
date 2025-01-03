@@ -436,7 +436,7 @@ class PexelsProvider extends AbstractProvider
         return null;
     }
 
-    protected function getDefaultOptions(): array
+    public function getDefaultOptions(): array
     {
         return [
             'type' => 'image',
