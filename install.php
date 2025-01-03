@@ -1,18 +1,5 @@
 <?php
-// Prüfen ob bereits eine Konfiguration existiert
-if (!$this->hasConfig()) {
-    // Standardkonfiguration setzen
-    $this->setConfig('providers', [
-        'pixabay' => [
-            'apikey' => '',
-            'copyright_fields' => 'user_pixabay'
-        ],
-        'pexels' => [
-            'apikey' => '',
-            'copyright_fields' => 'photographer_pexels'
-        ]
-    ]);
-}
+
 
 // Erstelle Cache-Tabelle mit rex_sql_table für bessere Updatefähigkeit
 $table = \rex_sql_table::get(\rex::getTable('asset_import_cache'));
