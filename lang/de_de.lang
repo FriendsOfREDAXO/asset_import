@@ -27,7 +27,25 @@ asset_import_provider_missing = Provider nicht gefunden
 
 asset_import_config_saved = Einstellungen wurden gespeichert
 
+# Pixabay Provider
 asset_import_provider_pixabay_apikey = Pixabay API-Key
+asset_import_provider_pixabay_apikey_notice = API-Key von Pixabay.com
+asset_import_provider_pixabay_copyright_format = Copyright-Format
+asset_import_provider_pixabay_copyright_format_notice = Wähle das Format für die Copyright-Informationen
 
+# Pexels Provider
 asset_import_provider_pexels_apikey = Pexels API-Key
 asset_import_provider_pexels_apikey_notice = API-Key von Pexels.com
+asset_import_provider_pexels_copyright_format = Copyright-Format
+asset_import_provider_pexels_copyright_format_notice = Wähle das Format für die Copyright-Informationen
+
+# Copyright Formate
+asset_import_copyright_format_extended = Erweitert (Autor, Lizenz & Quelle)
+asset_import_copyright_format_simple = Einfach (nur Quelle)
+
+# Copyright Info
+asset_import_copyright_field = Copyright Info
+asset_import_copyright_photographer = Fotograf
+asset_import_copyright_author = Autor
+asset_import_copyright_license = Lizenz
+asset_import_copyright_source = Quelle
