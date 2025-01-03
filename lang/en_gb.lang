@@ -27,7 +27,25 @@ asset_import_provider_missing = Provider not found
 
 asset_import_config_saved = Settings saved
 
+# Pixabay Provider
 asset_import_provider_pixabay_apikey = Pixabay API key
+asset_import_provider_pixabay_apikey_notice = API key from Pixabay.com
+asset_import_provider_pixabay_copyright_format = Copyright Format
+asset_import_provider_pixabay_copyright_format_notice = Choose the format for copyright information
 
-asset_import_provider_pexels_apikey = Pexels API-Key
-asset_import_provider_pexels_apikey_notice = API-Key von Pexels.com
+# Pexels Provider
+asset_import_provider_pexels_apikey = Pexels API key
+asset_import_provider_pexels_apikey_notice = API key from Pexels.com
+asset_import_provider_pexels_copyright_format = Copyright Format
+asset_import_provider_pexels_copyright_format_notice = Choose the format for copyright information
+
+# Copyright Formats
+asset_import_copyright_format_extended = Extended (Author, License & Source)
+asset_import_copyright_format_simple = Simple (Source only)
+
+# Copyright Info
+asset_import_copyright_field = Copyright Info
+asset_import_copyright_photographer = Photographer
+asset_import_copyright_author = Author
+asset_import_copyright_license = License
+asset_import_copyright_source = Source
