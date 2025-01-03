@@ -2,10 +2,6 @@
 namespace FriendsOfRedaxo\AssetImport\Asset;
 
 use FriendsOfRedaxo\AssetImport\Provider\ProviderInterface;
-use rex_sql;
-use rex_path;
-use rex_logger;
-use rex_media_service;
 
 abstract class AbstractProvider implements ProviderInterface
 {
@@ -48,7 +44,10 @@ abstract class AbstractProvider implements ProviderInterface
 
     abstract protected function searchApi(string $query, int $page = 1, array $options = []): array;
 
-    public function import(string $url, string $filename): bool
+    /**
+     * Download a file from URL and import it into the media pool
+     */
+    protected function downloadFile(string $url, string $filename): bool
     {
         try {
             $tmpFile = \rex_path::cache('asset_import_' . uniqid() . '_' . $filename);
