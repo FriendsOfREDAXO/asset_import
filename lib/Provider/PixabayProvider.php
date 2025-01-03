@@ -171,7 +171,7 @@ class PixabayProvider extends AbstractProvider
         if ($type === 'video') {
             return [
                 'id' => $item['id'],
-                'preview_url' => $item['picture_id'] ? "https://i.vimeocdn.com/video/{$item['picture_id']}_640x360.jpg" : '',
+                'preview_url' => !empty($item['picture_id']) ? "https://i.vimeocdn.com/video/{$item['picture_id']}_640x360.jpg" : ($item['userImageURL'] ?? $item['previewURL'] ?? ''),
                 'title' => $this->formatTitle($item),
                 'author' => $item['user'] ?? '',
                 'copyright' => $copyright,
@@ -243,31 +243,45 @@ class PixabayProvider extends AbstractProvider
 
     protected function formatVideoSizes(array $item): array
     {
-        $sizes = [];
+        $sizes = [
+            'tiny' => ['url' => ''],
+            'small' => ['url' => ''],
+            'medium' => ['url' => ''],
+            'large' => ['url' => '']
+        ];
         
-        if (isset($item['videos'])) {
-            // Sortiere nach Qualität
-            $videoFiles = [
-                'large' => $item['videos']['large'] ?? null,
-                'medium' => $item['videos']['medium'] ?? null,
-                'small' => $item['videos']['small'] ?? null,
-                'tiny' => $item['videos']['tiny'] ?? null
-            ];
-
+        if (!empty($item['videos'])) {
             // Finde die beste verfügbare Qualität als Fallback
             $fallbackUrl = '';
-            foreach ($videoFiles as $file) {
-                if ($file && !empty($file['url'])) {
-                    $fallbackUrl = $file['url'];
+            
+            // Definiere Qualitätsstufen und ihre Zuordnung
+            $qualityMap = [
+                'large' => ['large', 'medium'],
+                'medium' => ['medium', 'large', 'small'],
+                'small' => ['small', 'medium', 'tiny'],
+                'tiny' => ['tiny', 'small']
+            ];
+            
+            // Finde zuerst einen Fallback
+            foreach (['large', 'medium', 'small', 'tiny'] as $quality) {
+                if (!empty($item['videos'][$quality]['url'])) {
+                    $fallbackUrl = $item['videos'][$quality]['url'];
                     break;
                 }
             }
-
-            // Setze URLs für alle Größen
-            foreach ($videoFiles as $size => $file) {
-                $sizes[$size] = [
-                    'url' => $file['url'] ?? $fallbackUrl
-                ];
+            
+            // Setze die URLs für jede Größe
+            foreach ($qualityMap as $targetSize => $possibleSources) {
+                foreach ($possibleSources as $source) {
+                    if (!empty($item['videos'][$source]['url'])) {
+                        $sizes[$targetSize]['url'] = $item['videos'][$source]['url'];
+                        break;
+                    }
+                }
+                // Wenn keine passende Größe gefunden wurde, nutze den Fallback
+                if (empty($sizes[$targetSize]['url']) && $fallbackUrl) {
+                    $sizes[$targetSize]['url'] = $fallbackUrl;
+                }
             }
         }
 
