@@ -10,11 +10,18 @@ if (empty($providers)) {
 
 // Medienpool Kategorien laden
 $cats_sel = new \rex_media_category_select();
-$cats_sel->setStyle('class="form-control"');
+$cats_sel->setStyle('class="form-control selectpicker"');
 $cats_sel->setName('category_id');
 $cats_sel->setId('rex-mediapool-category');
 $cats_sel->setSize(1);
 $cats_sel->setAttribute('class', 'form-control selectpicker');
+$cats_sel->setAttribute('data-live-search', 'true');
+
+$user = \rex::requireUser();
+
+if ($user->getComplexPerm('media')->hasAll()) {
+    $cats_sel->addOption(\rex_i18n::msg('pool_kats_no'), '0');
+}
 
 $content = '
 <div class="asset-import-container">
