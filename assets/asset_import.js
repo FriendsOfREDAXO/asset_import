@@ -138,11 +138,11 @@ $(document).on('rex:ready', function() {
                     if (response.success) {
                         this.renderResults(response.data);
                     } else {
-                        this.showError(response.error || rex.asset_import_error_unknown);
+                        this.showError(response.error || rex.asset_import.error_unknown);
                     }
                 },
                 error: (xhr, status, error) => {
-                    this.showError(rex.asset_import_error_loading + ': ' + error);
+                    this.showError(rex.asset_import.error_loading + ': ' + error);
                 },
                 complete: () => {
                     this.loading = false;
