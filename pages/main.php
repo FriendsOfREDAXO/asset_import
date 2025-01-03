@@ -20,7 +20,7 @@ $cats_sel->setAttribute('data-live-search', 'true');
 $user = \rex::requireUser();
 
 if ($user->getComplexPerm('media')->hasAll()) {
-    $cats_sel->addOption(\rex_i18n::msg('pool_root_category'), '0');
+    $cats_sel->addOption(\rex_i18n::msg('pool_kats_no'), '0');
 }
 
 $content = '
