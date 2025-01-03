@@ -371,7 +371,7 @@ class PixabayProvider extends AbstractProvider
 
     protected function makeApiRequest(string $url, array $params): ?array
     {
-        $url = $url . '?' . http_build_query($params);
+        $url = $url . '?' . http_build_query($params, '', '&', PHP_QUERY_RFC3986);
 
         \rex_logger::factory()->log(LogLevel::DEBUG, 'Pixabay API request: {url}', ['url' => $url], __FILE__, __LINE__);
 
