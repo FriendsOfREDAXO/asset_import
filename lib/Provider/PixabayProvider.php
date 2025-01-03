@@ -362,6 +362,10 @@ class PixabayProvider extends AbstractProvider
 
     public function import(string $url, string $filename): bool
     {
+         dump('Starting import with:', [  // DUMP 7
+        'url' => $url,
+        'filename' => $filename
+    ]);
         if (!$this->isConfigured()) {
             throw new \rex_exception('Pixabay API key not configured');
         }
