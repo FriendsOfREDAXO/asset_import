@@ -106,34 +106,41 @@ abstract class AbstractProvider implements ProviderInterface
         }
     }
 
-    /**
-     * Update copyright information for imported media
-     */
-    protected function updateCopyrightInfo(string $filename): void
-    {
-        try {
-            $sql = \rex_sql::factory();
-            $sql->setQuery('SELECT id FROM ' . \rex::getTable('media') . ' WHERE filename = ? LIMIT 1', [$filename]);
-            
-            if ($sql->getRows() > 0) {
-                $copyright = $this->getCopyrightInfo([
-                    'filename' => $filename,
-                    'provider' => $this->getName(),
-                    'provider_title' => $this->getTitle()
+   protected function updateCopyrightInfo(string $filename): void
+{
+    try {
+        dump('Starting copyright update for: ' . $filename); // DUMP 1
+        
+        $sql = \rex_sql::factory();
+        $sql->setQuery('SELECT id FROM ' . \rex::getTable('media') . ' WHERE filename = ? LIMIT 1', [$filename]);
+        
+        if ($sql->getRows() > 0) {
+            $copyright = $this->getCopyrightInfo([
+                'filename' => $filename,
+                'provider' => $this->getName(),
+                'provider_title' => $this->getTitle()
+            ]);
+
+            dump('Generated copyright:', $copyright); // DUMP 2
+
+            if ($copyright !== null) {
+                $sql->setTable(\rex::getTable('media'));
+                $sql->setWhere(['filename' => $filename]);
+                $sql->setValue('med_copyright', $copyright);
+                $sql->update();
+                
+                dump('SQL Update executed with:', [  // DUMP 3
+                    'table' => \rex::getTable('media'),
+                    'where' => ['filename' => $filename],
+                    'copyright' => $copyright
                 ]);
-
-                if ($copyright !== null) {
-                    $sql->setTable(\rex::getTable('media'));
-                    $sql->setWhere(['filename' => $filename]);
-                    $sql->setValue('med_copyright', $copyright);
-                    $sql->update();
-                }
             }
-        } catch (\Exception $e) {
-            \rex_logger::logException($e);
         }
+    } catch (\Exception $e) {
+        dump('Error in updateCopyrightInfo:', $e->getMessage()); // DUMP 4
+        \rex_logger::logException($e);
     }
-
+}
     /**
      * Default implementation for copyright information
      * Can be overridden by specific providers
