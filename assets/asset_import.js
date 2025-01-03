@@ -43,27 +43,27 @@ $(document).on('rex:ready', function() {
         },
         
         initLazyLoading: function() {
-           const options = {
-               root: null,
-               rootMargin: '50px',
-               threshold: 0.1
-           };
+            const options = {
+                root: null,
+                rootMargin: '50px',
+                threshold: 0.1
+            };
 
-           const observer = new IntersectionObserver((entries, observer) => {
-               entries.forEach(entry => {
-                   if (entry.isIntersecting) {
-                       const media = entry.target;
-                       if (media.dataset.src) {
-                           media.src = media.dataset.src;
-                           media.removeAttribute('data-src');
-                           observer.unobserve(media);
-                       }
-                   }
-               });
-           }, options);
+            const observer = new IntersectionObserver((entries, observer) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        const media = entry.target;
+                        if (media.dataset.src) {
+                            media.src = media.dataset.src;
+                            media.removeAttribute('data-src');
+                            observer.unobserve(media);
+                        }
+                    }
+                });
+            }, options);
 
-           this.lazyLoadObserver = observer;
-       },
+            this.lazyLoadObserver = observer;
+        },
         
         bindEvents: function() {
             $('#asset-import-search-form').on('submit', (e) => {
@@ -150,7 +150,7 @@ $(document).on('rex:ready', function() {
             });
         },
         
-         renderResults: function(data) {
+        renderResults: function(data) {
             const container = $('#asset-import-results');
             let html = '';
             
@@ -165,7 +165,7 @@ $(document).on('rex:ready', function() {
                     <div class="asset-import-item" data-copyright="${copyright}">
                         <div class="asset-import-preview">
                             ${item.type === 'video' ? `
-                                <video controls preload="none" data-src="${item.size.tiny.url}" poster="${item.preview_url}">
+                                <video controls preload="none" data-src="${item.size.tiny.url}">
                                     <source src="${item.size.tiny.url}" type="video/mp4">
                                 </video>
                             ` : `
@@ -335,11 +335,11 @@ $(document).on('rex:ready', function() {
         
         escapeHtml: function(unsafe) {
             return unsafe
-                .replace(/&/g, "&")
-                .replace(/</g, "<")
-                .replace(/>/g, ">")
-                .replace(/"/g, """)
-                .replace(/'/g, "'");
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
         }
     };
     
