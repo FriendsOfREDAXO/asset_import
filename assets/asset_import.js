@@ -260,7 +260,7 @@ $(document).on('rex:ready', function() {
                 },
                 success: (response) => {
                     if (response.success) {
-                        this.showSuccess(rex.asset_import_success);
+                        this.showSuccess(rex.asset_import.success);
                         setTimeout(() => {
                             progress.hide();
                             btn.show();
