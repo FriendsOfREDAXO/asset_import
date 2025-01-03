@@ -71,6 +71,8 @@ class PixabayProvider extends AbstractProvider
 
     public function getCopyrightInfo(array $item): ?string
     {
+        dump('getCopyrightInfo input:', $item); // DUMP 5
+
         $format = $this->config['copyright_format'] ?? 'extended';
         
         if ($format === 'simple') {
@@ -78,6 +80,8 @@ class PixabayProvider extends AbstractProvider
         }
 
         $originalItem = $this->getOriginalItemData($item);
+        dump('Original item data:', $originalItem); // DUMP 6
+
         if (!$originalItem) {
             return '© Pixabay.com';
         }
