@@ -8,7 +8,7 @@ class PexelsProvider extends AbstractProvider
 {
     protected string $apiUrl = 'https://api.pexels.com/v1/';
     protected string $apiUrlVideos = 'https://api.pexels.com/videos/';
-    protected int $itemsPerPage = 20; // Maximum laut API-Dokumentation
+    protected int $itemsPerPage = 20;
 
     public function getName(): string
     {
@@ -61,44 +61,111 @@ class PexelsProvider extends AbstractProvider
                 'name' => 'apikey',
                 'type' => 'text',
                 'notice' => 'asset_import_provider_pexels_apikey_notice'
+            ],
+            [
+                'label' => 'asset_import_provider_pexels_copyright_format',
+                'name' => 'copyright_format',
+                'type' => 'select',
+                'options' => [
+                    ['value' => 'extended', 'label' => 'Extended (Photographer, License & Provider)'],
+                    ['value' => 'simple', 'label' => 'Simple (Provider only)']
+                ],
+                'notice' => 'Format for copyright information'
             ]
         ];
     }
 
-    /**
-     * Extract image/video ID from Pexels URL
-     */
+    public function getFieldMapping(): array
+    {
+        return [
+            'photographer' => 'Photographer',
+            'photographer_url' => 'Photographer Profile',
+            'url' => 'Source URL',
+            'type' => 'Media Type'
+        ];
+    }
+
+    public function getCopyrightInfo(array $item): ?string
+    {
+        $format = $this->config['copyright_format'] ?? 'extended';
+        
+        if ($format === 'simple') {
+            return '© Pexels.com';
+        }
+
+        $originalItem = $this->getOriginalItemData($item);
+        if (!$originalItem) {
+            return '© Pexels.com';
+        }
+
+        $photographer = $originalItem['photographer'] ?? null;
+        $photographerUrl = $originalItem['photographer_url'] ?? null;
+        $sourceUrl = $originalItem['url'] ?? 'https://www.pexels.com';
+
+        // Build copyright string
+        $copyright = [];
+        
+        // Add photographer if available
+        if ($photographer) {
+            if ($photographerUrl) {
+                $copyright[] = "© <a href=\"{$photographerUrl}\" target=\"_blank\">{$photographer}</a>";
+            } else {
+                $copyright[] = "© {$photographer}";
+            }
+        }
+        
+        // Add license and source
+        $copyright[] = 'Pexels License';
+        $copyright[] = "Source: <a href=\"{$sourceUrl}\" target=\"_blank\">Pexels.com</a>";
+
+        return implode(' | ', $copyright);
+    }
+
+    protected function getOriginalItemData(array $item): ?array
+    {
+        try {
+            if (isset($item['filename'])) {
+                // Try to get ID from filename if it's a Pexels format
+                if (preg_match('/-(\d+)\./', $item['filename'], $matches)) {
+                    $id = $matches[1];
+                    $type = strpos($item['filename'], 'video-') !== false ? 'video' : 'photo';
+                    $apiItem = $this->getById((int)$id, $type);
+                    if ($apiItem) {
+                        return $apiItem;
+                    }
+                }
+            }
+
+            // If we have original_data, use that
+            if (isset($item['original_data'])) {
+                return $item['original_data'];
+            }
+        } catch (\Exception $e) {
+            \rex_logger::logException($e);
+        }
+        
+        return null;
+    }
+
     protected function extractIdFromUrl(string $url): ?int
     {
-        // Match URLs like:
-        // https://www.pexels.com/photo/brown-rocks-during-golden-hour-2014422/
-        // https://www.pexels.com/video/drone-view-of-a-city-3129957/
         if (preg_match('#pexels\.com/(?:photo|video)/[^/]+-(\d+)/?$#i', $url, $matches)) {
             return (int)$matches[1];
         }
         return null;
     }
 
-    /**
-     * Check if input is a Pexels URL
-     */
     protected function isPexelsUrl(string $query): bool
     {
         return (bool)preg_match('#^https?://(?:www\.)?pexels\.com/(?:photo|video)/#i', $query);
     }
 
-    /**
-     * Get single photo by ID
-     */
     protected function getPhotoById(int $id): ?array
     {
         $url = $this->apiUrl . 'photos/' . $id;
         return $this->makeApiRequest($url);
     }
 
-    /**
-     * Get single video by ID
-     */
     protected function getVideoById(int $id): ?array
     {
         $url = $this->apiUrlVideos . '/videos/' . $id;
@@ -136,7 +203,6 @@ class PexelsProvider extends AbstractProvider
                         ];
                     }
                 }
-                // If URL parsing failed, fall back to normal search
             }
 
             $type = $options['type'] ?? 'image';
@@ -165,7 +231,7 @@ class PexelsProvider extends AbstractProvider
                             'query' => $query,
                             'page' => $page,
                             'per_page' => $type === 'all' ? intval($perPage / 2) : $perPage,
-                            'orientation' => 'landscape'  // Bevorzuge Landscape-Orientierung
+                            'orientation' => 'landscape'
                         ]
                     );
 
@@ -183,7 +249,7 @@ class PexelsProvider extends AbstractProvider
                         fn($item) => $this->formatItem($item, 'image'),
                         $imageResults['photos']
                     );
-                    $totalHits = count($imageResults['photos']) * 10; // Schätzung der Gesamtanzahl
+                    $totalHits = count($imageResults['photos']) * 10;
                 }
             }
 
@@ -198,7 +264,7 @@ class PexelsProvider extends AbstractProvider
                     $videoParams['query'] = $query;
                     $endpoint = 'search';
                 } else {
-                    $endpoint = 'popular'; // Verwende populäre Videos wenn kein Suchbegriff
+                    $endpoint = 'popular';
                 }
 
                 $videoResults = $this->makeApiRequest(
@@ -246,9 +312,6 @@ class PexelsProvider extends AbstractProvider
         }
     }
 
-    /**
-     * Format API item to standardized response
-     */
     protected function formatItem(array $item, string $type): array
     {
         if ($type === 'video') {
@@ -294,15 +357,14 @@ class PexelsProvider extends AbstractProvider
                 }
             }
 
-            \rex_logger::factory()->log(\Psr\Log\LogLevel::DEBUG, 'Formatted video sizes: {sizes}', ['sizes' => $sizes], __FILE__, __LINE__);
-
             return [
                 'id' => $item['id'],
                 'preview_url' => $item['image'] ?? '',
                 'title' => $item['duration'] ? sprintf('Video (%ds)', $item['duration']) : 'Video',
                 'author' => $item['user']['name'] ?? 'Pexels',
                 'type' => 'video',
-                'size' => $sizes
+                'size' => $sizes,
+                'original_data' => $item
             ];
         }
         
@@ -314,42 +376,20 @@ class PexelsProvider extends AbstractProvider
             'large' => ['url' => $item['src']['original'] ?? $item['src']['large2x'] ?? $item['src']['large'] ?? '']
         ];
 
-        \rex_logger::factory()->log(\Psr\Log\LogLevel::DEBUG, 'Formatted image sizes: {sizes}', ['sizes' => $sizes], __FILE__, __LINE__);
-
         return [
             'id' => $item['id'],
             'preview_url' => $item['src']['medium'] ?? $item['src']['small'] ?? '',
             'title' => $item['alt'] ?? $item['photographer'] ?? 'Image',
             'author' => $item['photographer'] ?? 'Pexels',
             'type' => 'image',
-            'size' => $sizes
+            'size' => $sizes,
+            'original_data' => $item,
+            'source_url' => $item['url'] ?? '',
+            'photographer_url' => $item['photographer_url'] ?? '',
+            'license' => 'Pexels License'
         ];
     }
 
-    /**
-     * Get standardized quality label for video
-     */
-    protected function getVideoQualityLabel(array $file): ?string
-    {
-        $height = $file['height'];
-        $quality = $file['quality'];
-
-        if ($quality === 'hd' && $height >= 720) {
-            return 'large';
-        } elseif ($height >= 480) {
-            return 'medium';
-        } elseif ($height >= 360) {
-            return 'small';
-        } elseif ($height < 360) {
-            return 'tiny';
-        }
-
-        return null;
-    }
-
-    /**
-     * Make API request to Pexels
-     */
     protected function makeApiRequest(string $url, array $params = []): ?array
     {
         if (!$this->isConfigured()) {
@@ -404,6 +444,24 @@ class PexelsProvider extends AbstractProvider
         }
 
         return $data;
+    }
+
+    protected function getVideoQualityLabel(array $file): ?string
+    {
+        $height = $file['height'];
+        $quality = $file['quality'];
+
+        if ($quality === 'hd' && $height >= 720) {
+            return 'large';
+        } elseif ($height >= 480) {
+            return 'medium';
+        } elseif ($height >= 360) {
+            return 'small';
+        } elseif ($height < 360) {
+            return 'tiny';
+        }
+
+        return null;
     }
 
     public function import(string $url, string $filename): bool
