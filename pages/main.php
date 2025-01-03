@@ -15,6 +15,7 @@ $cats_sel->setName('category_id');
 $cats_sel->setId('rex-mediapool-category');
 $cats_sel->setSize(1);
 $cats_sel->setAttribute('class', 'form-control selectpicker');
+$cats_sel->setRootId(0); // Setze die Root-Kategorie als Root-Element
 
 $content = '
 <div class="asset-import-container">
