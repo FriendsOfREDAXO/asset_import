@@ -52,9 +52,7 @@ if (rex::isBackend() && rex::getUser()) {
         ];
         
         // Add translations to Javascript
-        rex_view::addJsData([
-            'asset_import' => $translations
-        ]);
+        rex_view::setJsProperty('asset_import', $translations);
     }
     
     // Handle AJAX requests
