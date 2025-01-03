@@ -43,27 +43,27 @@ $(document).on('rex:ready', function() {
         },
         
         initLazyLoading: function() {
-            const options = {
-                root: null,
-                rootMargin: '50px',
-                threshold: 0.1
-            };
+           const options = {
+               root: null,
+               rootMargin: '50px',
+               threshold: 0.1
+           };
 
-            const observer = new IntersectionObserver((entries, observer) => {
-                entries.forEach(entry => {
-                    if (entry.isIntersecting) {
-                        const media = entry.target;
-                        if (media.dataset.src) {
-                            media.src = media.dataset.src;
-                            media.removeAttribute('data-src');
-                            observer.unobserve(media);
-                        }
-                    }
-                });
-            }, options);
+           const observer = new IntersectionObserver((entries, observer) => {
+               entries.forEach(entry => {
+                   if (entry.isIntersecting) {
+                       const media = entry.target;
+                       if (media.dataset.src) {
+                           media.src = media.dataset.src;
+                           media.removeAttribute('data-src');
+                           observer.unobserve(media);
+                       }
+                   }
+               });
+           }, options);
 
-            this.lazyLoadObserver = observer;
-        },
+           this.lazyLoadObserver = observer;
+       },
         
         bindEvents: function() {
             $('#asset-import-search-form').on('submit', (e) => {
@@ -150,7 +150,7 @@ $(document).on('rex:ready', function() {
             });
         },
         
-        renderResults: function(data) {
+         renderResults: function(data) {
             const container = $('#asset-import-results');
             let html = '';
             
@@ -165,8 +165,8 @@ $(document).on('rex:ready', function() {
                     <div class="asset-import-item" data-copyright="${copyright}">
                         <div class="asset-import-preview">
                             ${item.type === 'video' ? `
-                                <video controls preload="none" src="${item.size.tiny.url}" poster="${item.preview_url}">
-                                    
+                                <video controls preload="none" data-src="${item.size.tiny.url}" poster="${item.preview_url}">
+                                    <source src="${item.size.tiny.url}" type="video/mp4">
                                 </video>
                             ` : `
                                 <img data-src="${item.preview_url}" alt="${this.escapeHtml(item.title)}">
@@ -204,7 +204,7 @@ $(document).on('rex:ready', function() {
             
             // Lazy Loading für neue Bilder aktivieren
             if (this.lazyLoadObserver) {
-                container.find('img[data-src]').each((i, el) => {
+                container.find('img[data-src], video[data-src]').each((i, el) => {
                     this.lazyLoadObserver.observe(el);
                 });
             }
