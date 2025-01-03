@@ -87,6 +87,8 @@ class PexelsProvider extends AbstractProvider
 
     public function getCopyrightInfo(array $item): ?string
     {
+            dump('getCopyrightInfo input:', $item); // DUMP 5
+
         $format = $this->config['copyright_format'] ?? 'extended';
         
         if ($format === 'simple') {
@@ -94,6 +96,8 @@ class PexelsProvider extends AbstractProvider
         }
 
         $originalItem = $this->getOriginalItemData($item);
+        dump('Original item data:', $originalItem); // DUMP 6
+
         if (!$originalItem) {
             return '© Pexels.com';
         }
