@@ -165,7 +165,7 @@ $(document).on('rex:ready', function() {
                     <div class="asset-import-item" data-copyright="${copyright}">
                         <div class="asset-import-preview">
                             ${item.type === 'video' ? `
-                                <video controls preload="none" data-src="${item.size.tiny.url}">
+                                 <video controls>
                                     <source src="${item.size.tiny.url}" type="video/mp4">
                                 </video>
                             ` : `
