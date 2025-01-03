@@ -45,8 +45,80 @@ class PixabayProvider extends AbstractProvider
                 'name' => 'apikey',
                 'type' => 'text',
                 'notice' => 'asset_import_provider_pixabay_apikey_notice'
+            ],
+            [
+                'label' => 'asset_import_provider_pixabay_copyright_format',
+                'name' => 'copyright_format',
+                'type' => 'select',
+                'options' => [
+                    ['value' => 'extended', 'label' => 'Extended (Author, License & Provider)'],
+                    ['value' => 'simple', 'label' => 'Simple (Provider only)']
+                ],
+                'notice' => 'Format for copyright information'
             ]
         ];
+    }
+
+    public function getFieldMapping(): array
+    {
+        return [
+            'user' => 'Author',
+            'pageURL' => 'Source URL',
+            'type' => 'Media Type',
+            'tags' => 'Tags'
+        ];
+    }
+
+    public function getCopyrightInfo(array $item): ?string
+    {
+        $format = $this->config['copyright_format'] ?? 'extended';
+        
+        if ($format === 'simple') {
+            return '© Pixabay.com';
+        }
+
+        $originalItem = $this->getOriginalItemData($item);
+        if (!$originalItem) {
+            return '© Pixabay.com';
+        }
+
+        $author = $originalItem['user'] ?? null;
+        $pageUrl = $originalItem['pageURL'] ?? 'https://pixabay.com';
+
+        // Build copyright string
+        $copyright = [];
+        
+        if ($author) {
+            $copyright[] = "© {$author}";
+        }
+        
+        $copyright[] = 'Pixabay License';
+        $copyright[] = "Source: <a href=\"{$pageUrl}\" target=\"_blank\">Pixabay.com</a>";
+
+        return implode(' | ', $copyright);
+    }
+
+    /**
+     * Get the original API item data for a media file
+     */
+    protected function getOriginalItemData(array $item): ?array
+    {
+        try {
+            if (isset($item['filename'])) {
+                // Try to get ID from filename if it's a Pixabay format
+                if (preg_match('/-(\d+)\./', $item['filename'], $matches)) {
+                    $id = $matches[1];
+                    $apiItem = $this->getById((int)$id);
+                    if ($apiItem) {
+                        return $apiItem;
+                    }
+                }
+            }
+        } catch (\Exception $e) {
+            \rex_logger::logException($e);
+        }
+        
+        return null;
     }
 
     /**
@@ -206,8 +278,10 @@ class PixabayProvider extends AbstractProvider
      */
     protected function formatItem(array $item, string $type): array
     {
+        $formatted = [];
+        
         if ($type === 'video') {
-            return [
+            $formatted = [
                 'id' => $item['id'],
                 'preview_url' => $item['picture_id'] ? "https://i.vimeocdn.com/video/{$item['picture_id']}_640x360.jpg" : '',
                 'title' => $item['tags'],
@@ -218,23 +292,33 @@ class PixabayProvider extends AbstractProvider
                     'small' => ['url' => $item['videos']['small']['url']],
                     'medium' => ['url' => $item['videos']['medium']['url']],
                     'large' => ['url' => $item['videos']['large']['url'] ?? $item['videos']['medium']['url']]
-                ]
+                ],
+                // Add original API data for copyright info
+                'original_data' => $item
+            ];
+        } else {
+            $formatted = [
+                'id' => $item['id'],
+                'preview_url' => $item['webformatURL'],
+                'title' => $item['tags'],
+                'author' => $item['user'],
+                'type' => 'image',
+                'size' => [
+                    'preview' => ['url' => $item['previewURL']],
+                    'web' => ['url' => $item['webformatURL']],
+                    'large' => ['url' => $item['largeImageURL']],
+                    'original' => ['url' => $item['imageURL'] ?? $item['largeImageURL']]
+                ],
+                // Add original API data for copyright info
+                'original_data' => $item
             ];
         }
+
+        // Store information needed for copyright
+        $formatted['source_url'] = $item['pageURL'] ?? '';
+        $formatted['license'] = 'Pixabay License';
         
-        return [
-            'id' => $item['id'],
-            'preview_url' => $item['webformatURL'],
-            'title' => $item['tags'],
-            'author' => $item['user'],
-            'type' => 'image',
-            'size' => [
-                'preview' => ['url' => $item['previewURL']],
-                'web' => ['url' => $item['webformatURL']],
-                'large' => ['url' => $item['largeImageURL']],
-                'original' => ['url' => $item['imageURL'] ?? $item['largeImageURL']]
-            ]
-        ];
+        return $formatted;
     }
 
     protected function makeApiRequest(string $url, array $params): ?array
