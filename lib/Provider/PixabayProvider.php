@@ -401,7 +401,7 @@ class PixabayProvider extends AbstractProvider
         return $data;
     }
 
-    protected function getDefaultOptions(): array
+    public function getDefaultOptions(): array
     {
         return [
             'type' => 'image',
