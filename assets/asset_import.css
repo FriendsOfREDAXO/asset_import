@@ -55,7 +55,6 @@
 }
 
 .asset-import-search .btn {
-    min-height: 44px; /* Touch-freundliche Größe */
     display: flex;
     align-items: center;
     justify-content: center;
@@ -105,19 +104,7 @@
     transition: transform var(--ai-transition);
 }
 
-.asset-import-preview::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: var(--ai-preview-overlay);
-    opacity: 0;
-    transition: opacity var(--ai-transition);
-}
-
-.asset-import-item:hover .asset-import-preview::after {
+.asset-import-item:hover  {
     opacity: 1;
 }
 
@@ -141,7 +128,6 @@
 }
 
 .asset-import-actions .btn {
-    min-height: 44px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -157,7 +143,6 @@
 /* Verbesserte Select-Darstellung */
 .asset-import-size-select {
     width: 100%;
-    min-height: 44px;
     background-color: var(--ai-bg-color);
     color: var(--ai-text-color);
     border-color: var(--ai-border-color);
