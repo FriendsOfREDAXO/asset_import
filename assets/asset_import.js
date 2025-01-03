@@ -165,8 +165,8 @@ $(document).on('rex:ready', function() {
                     <div class="asset-import-item" data-copyright="${copyright}">
                         <div class="asset-import-preview">
                             ${item.type === 'video' ? `
-                                <video controls preload="none" data-src="${item.size.tiny.url}">
-                                    <source src="${item.size.tiny.url}" type="video/mp4">
+                                <video controls preload="none" src="${item.size.tiny.url}" poster="${item.preview_url}">
+                                    
                                 </video>
                             ` : `
                                 <img data-src="${item.preview_url}" alt="${this.escapeHtml(item.title)}">
@@ -204,7 +204,7 @@ $(document).on('rex:ready', function() {
             
             // Lazy Loading für neue Bilder aktivieren
             if (this.lazyLoadObserver) {
-                container.find('img[data-src], video[data-src]').each((i, el) => {
+                container.find('img[data-src]').each((i, el) => {
                     this.lazyLoadObserver.observe(el);
                 });
             }
@@ -335,11 +335,11 @@ $(document).on('rex:ready', function() {
         
         escapeHtml: function(unsafe) {
             return unsafe
-                .replace(/&/g, "&amp;")
-                .replace(/</g, "&lt;")
-                .replace(/>/g, "&gt;")
-                .replace(/"/g, "&quot;")
-                .replace(/'/g, "&#039;");
+                .replace(/&/g, "&")
+                .replace(/</g, "<")
+                .replace(/>/g, ">")
+                .replace(/"/g, """)
+                .replace(/'/g, "'");
         }
     };
     
