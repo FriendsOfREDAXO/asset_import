@@ -20,7 +20,8 @@ $(document).on('rex:ready', function() {
                 this.search();
             });
             
-            $('#asset-import-load-more button').on('click', () => {
+            $('#asset-import-load-more button').on('click', (e) => {
+                e.preventDefault();
                 if (!this.loading && this.hasMore) {
                     this.currentPage++;
                     this.search();
@@ -32,10 +33,12 @@ $(document).on('rex:ready', function() {
                 const btn = $(e.currentTarget);
                 const item = btn.closest('.asset-import-item');
                 const selectSize = item.find('.asset-import-size-select');
-                const url = selectSize.find('option:selected').data('url');
+                const selectedOption = selectSize.find('option:selected');
+                const url = selectedOption.data('url');
                 const filename = item.find('.asset-import-title').text();
+                const copyright = item.data('copyright') || '';
                 
-                this.import(url, filename, btn);
+                this.import(url, filename, copyright, btn);
             });
         },
         
@@ -69,11 +72,11 @@ $(document).on('rex:ready', function() {
                     if (response.success) {
                         this.renderResults(response.data);
                     } else {
-                        this.showError(response.error || 'Unknown error');
+                        this.showError(response.error || rex.asset_import.error_unknown);
                     }
                 },
                 error: (xhr, status, error) => {
-                    this.showError('Error loading results: ' + error);
+                    this.showError(rex.asset_import.error_loading + ': ' + error);
                 },
                 complete: () => {
                     this.loading = false;
@@ -91,19 +94,20 @@ $(document).on('rex:ready', function() {
             }
             
             data.items.forEach(item => {
+                const copyright = item.copyright || '';
                 html += `
-                    <div class="asset-import-item">
+                    <div class="asset-import-item" data-copyright="${copyright}">
                         <div class="asset-import-preview">
                             ${item.type === 'video' ? `
                                 <video controls>
                                     <source src="${item.size.tiny.url}" type="video/mp4">
                                 </video>
                             ` : `
-                                <img src="${item.preview_url}" alt="${item.title}">
+                                <img src="${item.preview_url}" alt="${this.escapeHtml(item.title)}">
                             `}
                         </div>
                         <div class="asset-import-info">
-                            <div class="asset-import-title">${item.title}</div>
+                            <div class="asset-import-title">${this.escapeHtml(item.title)}</div>
                             <select class="form-control selectpicker asset-import-size-select">
                                 ${Object.entries(item.size).map(([key, value]) => `
                                     <option value="${key}" data-url="${value.url}">
@@ -112,13 +116,13 @@ $(document).on('rex:ready', function() {
                                 `).join('')}
                             </select>
                             <div class="asset-import-actions">
-                                <button class="btn btn-primary btn-block asset-import-import-btn">
-                                    <i class="rex-icon fa-download"></i> Import
+                                <button class="btn btn-primary asset-import-import-btn">
+                                    <i class="rex-icon fa-download"></i> ${rex.asset_import.import}
                                 </button>
                             </div>
                             <div class="progress" style="display: none;">
                                 <div class="progress-bar progress-bar-striped active" role="progressbar" style="width: 100%">
-                                    <i class="rex-icon fa-download"></i> Importing...
+                                    <i class="rex-icon fa-download"></i> ${rex.asset_import.importing}
                                 </div>
                             </div>
                         </div>
@@ -138,15 +142,14 @@ $(document).on('rex:ready', function() {
             this.showStatus('results', data.total);
 
             // Initialize bootstrap-select for newly added selects
-            $('.selectpicker').selectpicker();
+            $('.selectpicker').selectpicker('refresh');
         },
         
-        import: function(url, filename, btn) {
+        import: function(url, filename, copyright, btn) {
             const item = btn.closest('.asset-import-item');
             const progress = item.find('.progress');
             const categoryId = $('#rex-mediapool-category').val();
             
-            // Hide button and show progress
             btn.hide();
             progress.show();
             
@@ -159,23 +162,24 @@ $(document).on('rex:ready', function() {
                     provider: $('#asset-import-provider').val(),
                     url: url,
                     filename: filename,
-                    category_id: categoryId
+                    category_id: categoryId,
+                    copyright: copyright
                 },
                 success: (response) => {
                     if (response.success) {
-                        this.showSuccess('Asset successfully imported');
+                        this.showSuccess(rex.asset_import.success);
                         setTimeout(() => {
                             progress.hide();
                             btn.show();
                         }, 1000);
                     } else {
-                        this.showError(response.error || 'Import failed');
+                        this.showError(response.error || rex.asset_import.error_import);
                         progress.hide();
                         btn.show();
                     }
                 },
                 error: (xhr, status, error) => {
-                    this.showError('Error importing file: ' + error);
+                    this.showError(rex.asset_import.error_loading + ': ' + error);
                     progress.hide();
                     btn.show();
                 }
@@ -187,20 +191,23 @@ $(document).on('rex:ready', function() {
             
             switch(type) {
                 case 'loading':
-                    status.removeClass('alert-danger alert-info').addClass('alert-info')
-                        .html('<i class="rex-icon fa-spinner fa-spin"></i> Loading results...')
+                    status.removeClass('alert-danger alert-info')
+                        .addClass('alert-info')
+                        .html(`<i class="rex-icon fa-spinner fa-spin"></i> ${rex.asset_import.loading}`)
                         .show();
                     break;
                     
                 case 'results':
-                    status.removeClass('alert-danger alert-info').addClass('alert-info')
-                        .text(`${total} results found`)
+                    status.removeClass('alert-danger alert-info')
+                        .addClass('alert-info')
+                        .text(total + ' ' + rex.asset_import.results_found)
                         .show();
                     break;
                     
                 case 'no-results':
-                    status.removeClass('alert-danger alert-info').addClass('alert-info')
-                        .text('No results found')
+                    status.removeClass('alert-danger alert-info')
+                        .addClass('alert-info')
+                        .text(rex.asset_import.no_results)
                         .show();
                     break;
                     
@@ -231,6 +238,15 @@ $(document).on('rex:ready', function() {
             setTimeout(() => {
                 $('#asset-import-status').fadeOut();
             }, 3000);
+        },
+        
+        escapeHtml: function(unsafe) {
+            return unsafe
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
         }
     };
     

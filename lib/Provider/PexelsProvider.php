@@ -2,13 +2,15 @@
 namespace FriendsOfRedaxo\AssetImport\Provider;
 
 use FriendsOfRedaxo\AssetImport\Asset\AbstractProvider;
+use rex_media_manager;
+use rex_media;
 use Psr\Log\LogLevel;
 
 class PexelsProvider extends AbstractProvider
 {
     protected string $apiUrl = 'https://api.pexels.com/v1/';
     protected string $apiUrlVideos = 'https://api.pexels.com/videos/';
-    protected int $itemsPerPage = 20; // Maximum laut API-Dokumentation
+    protected int $itemsPerPage = 20;
 
     public function getName(): string
     {
@@ -25,10 +27,26 @@ class PexelsProvider extends AbstractProvider
         return 'fa-camera';
     }
 
-    public function getDefaultOptions(): array
+    public function getConfigFields(): array
     {
         return [
-            'type' => 'image'
+            [
+                'label' => 'asset_import_provider_pexels_apikey',
+                'name' => 'apikey',
+                'type' => 'text',
+                'notice' => 'asset_import_provider_pexels_apikey_notice'
+            ],
+            [
+                'label' => 'asset_import_provider_copyright_fields',
+                'name' => 'copyright_fields',
+                'type' => 'select',
+                'options' => [
+                    ['label' => 'Photographer + Pexels', 'value' => 'photographer_pexels'],
+                    ['label' => 'Only Photographer', 'value' => 'photographer'],
+                    ['label' => 'Only Pexels', 'value' => 'pexels']
+                ],
+                'notice' => 'asset_import_provider_copyright_notice'
+            ]
         ];
     }
 
@@ -40,34 +58,373 @@ class PexelsProvider extends AbstractProvider
                        !empty($this->config['apikey']);
         
         if (!$isConfigured) {
-            \rex_logger::factory()->log(LogLevel::WARNING, 'Pexels provider not configured correctly. Config status: {status}', [
-                'status' => [
-                    'config_set' => isset($this->config),
-                    'is_array' => isset($this->config) && is_array($this->config),
-                    'has_apikey' => isset($this->config['apikey']),
-                    'apikey_not_empty' => !empty($this->config['apikey'])
-                ]
-            ], __FILE__, __LINE__);
+            \rex_logger::factory()->log(LogLevel::WARNING, 'Pexels provider not configured correctly.', [], __FILE__, __LINE__);
         }
         
         return $isConfigured;
     }
 
-    public function getConfigFields(): array
+    protected function searchApi(string $query, int $page = 1, array $options = []): array
     {
+        try {
+            if (!$this->isConfigured()) {
+                throw new \rex_exception('Pexels API key not configured');
+            }
+
+            if ($this->isPexelsUrl($query)) {
+                return $this->handlePexelsUrl($query);
+            }
+
+            $type = $options['type'] ?? 'image';
+            $results = [];
+            $totalHits = 0;
+
+            $perPage = $this->itemsPerPage * 2;
+
+            if ($type === 'all' || $type === 'image') {
+                $results = $this->searchImages($query, $page, $perPage, $type);
+                $totalHits = $results['total'] ?? 0;
+            }
+
+            if ($type === 'all' || $type === 'video') {
+                $videoResults = $this->searchVideos($query, $page, $perPage, $type);
+                if ($type === 'all') {
+                    $results['items'] = array_merge($results['items'] ?? [], $videoResults['items'] ?? []);
+                    $totalHits = ($totalHits + ($videoResults['total'] ?? 0)) / 2;
+                } else {
+                    $results = $videoResults;
+                    $totalHits = $videoResults['total'] ?? 0;
+                }
+            }
+
+            // Entferne Duplikate und beschränke Ergebnisse
+            $results['items'] = array_values(array_unique($results['items'] ?? [], SORT_REGULAR));
+            $results['items'] = array_slice($results['items'] ?? [], 0, $perPage);
+
+            return [
+                'items' => $results['items'] ?? [],
+                'total' => $totalHits,
+                'page' => $page,
+                'total_pages' => max(1, ceil($totalHits / $perPage))
+            ];
+
+        } catch (\Exception $e) {
+            \rex_logger::factory()->log(LogLevel::ERROR, $e->getMessage(), [], __FILE__, __LINE__);
+            return ['items' => [], 'total' => 0, 'page' => 1, 'total_pages' => 1];
+        }
+    }
+
+    protected function searchImages(string $query, int $page, int $perPage, string $type): array
+    {
+        $results = [];
+        
+        if (!empty($query)) {
+            $searchResults = $this->makeApiRequest(
+                $this->apiUrl . 'search',
+                [
+                    'query' => $query,
+                    'page' => $page,
+                    'per_page' => $type === 'all' ? intval($perPage / 2) : $perPage,
+                    'orientation' => 'landscape'
+                ]
+            );
+
+            if ($searchResults && isset($searchResults['photos'])) {
+                $results = [
+                    'items' => array_map(
+                        fn($item) => $this->formatItem($item, 'image'),
+                        $searchResults['photos']
+                    ),
+                    'total' => $searchResults['total_results']
+                ];
+            }
+        } else {
+            $curatedResults = $this->makeApiRequest(
+                $this->apiUrl . 'curated',
+                [
+                    'page' => $page,
+                    'per_page' => $type === 'all' ? intval($perPage / 2) : $perPage
+                ]
+            );
+
+            if ($curatedResults && isset($curatedResults['photos'])) {
+                $results = [
+                    'items' => array_map(
+                        fn($item) => $this->formatItem($item, 'image'),
+                        $curatedResults['photos']
+                    ),
+                    'total' => count($curatedResults['photos']) * 10
+                ];
+            }
+        }
+
+        return $results;
+    }
+
+    protected function searchVideos(string $query, int $page, int $perPage, string $type): array
+    {
+        $videoParams = [
+            'page' => $page,
+            'per_page' => $type === 'all' ? intval($perPage / 2) : $perPage
+        ];
+
+        if (!empty($query)) {
+            $videoParams['query'] = $query;
+            $endpoint = 'search';
+        } else {
+            $endpoint = 'popular';
+        }
+
+        $videoResults = $this->makeApiRequest(
+            $this->apiUrlVideos . $endpoint,
+            $videoParams
+        );
+
+        if ($videoResults && isset($videoResults['videos'])) {
+            return [
+                'items' => array_map(
+                    fn($item) => $this->formatItem($item, 'video'),
+                    $videoResults['videos']
+                ),
+                'total' => $videoResults['total_results'] ?? count($videoResults['videos']) * 10
+            ];
+        }
+
+        return ['items' => [], 'total' => 0];
+    }
+
+    protected function formatItem(array $item, string $type): array
+    {
+        $copyright = $this->formatCopyright($item);
+        
+        if ($type === 'video') {
+            $sizes = $this->formatVideoSizes($item);
+            
+            return [
+                'id' => $item['id'],
+                'preview_url' => $item['image'] ?? '',
+                'title' => $item['duration'] ? sprintf('Video (%ds)', $item['duration']) : 'Video',
+                'author' => $item['user']['name'] ?? '',
+                'copyright' => $copyright,
+                'type' => 'video',
+                'size' => $sizes
+            ];
+        }
+        
         return [
-            [
-                'label' => 'asset_import_provider_pexels_apikey',
-                'name' => 'apikey',
-                'type' => 'text',
-                'notice' => 'asset_import_provider_pexels_apikey_notice'
+            'id' => $item['id'],
+            'preview_url' => $item['src']['medium'] ?? $item['src']['small'] ?? '',
+            'title' => $item['alt'] ?? $item['photographer'] ?? 'Image',
+            'author' => $item['photographer'] ?? '',
+            'copyright' => $copyright,
+            'type' => 'image',
+            'size' => [
+                'tiny' => ['url' => $item['src']['tiny'] ?? $item['src']['small'] ?? ''],
+                'small' => ['url' => $item['src']['small'] ?? $item['src']['medium'] ?? ''],
+                'medium' => ['url' => $item['src']['medium'] ?? $item['src']['large'] ?? ''],
+                'large' => ['url' => $item['src']['original'] ?? $item['src']['large2x'] ?? $item['src']['large'] ?? '']
             ]
         ];
     }
 
-    /**
-     * Extract image/video ID from Pexels URL
-     */
+    protected function formatCopyright(array $item): string
+    {
+        $copyrightFields = $this->config['copyright_fields'] ?? 'photographer_pexels';
+        $parts = [];
+
+        switch ($copyrightFields) {
+            case 'photographer':
+                if (isset($item['photographer']) || isset($item['user']['name'])) {
+                    $parts[] = $item['photographer'] ?? $item['user']['name'];
+                }
+                break;
+            case 'pexels':
+                $parts[] = 'Pexels.com';
+                break;
+            case 'photographer_pexels':
+            default:
+                if (isset($item['photographer']) || isset($item['user']['name'])) {
+                    $parts[] = $item['photographer'] ?? $item['user']['name'];
+                }
+                $parts[] = 'Pexels.com';
+                break;
+        }
+
+        return implode(' / ', array_filter($parts));
+    }
+
+    protected function formatVideoSizes(array $item): array
+    {
+        $videoFiles = $item['video_files'] ?? [];
+        $sizes = [];
+
+        foreach ($videoFiles as $file) {
+            $height = $file['height'] ?? 0;
+            $link = $file['link'] ?? '';
+            
+            if (empty($link)) continue;
+
+            if ($height >= 1080) {
+                $sizes['large'] = ['url' => $link];
+            } elseif ($height >= 720) {
+                $sizes['medium'] = ['url' => $link];
+            } elseif ($height >= 480) {
+                $sizes['small'] = ['url' => $link];
+            } else {
+                $sizes['tiny'] = ['url' => $link];
+            }
+        }
+
+        // Fallback für fehlende Größen
+        if (!empty($videoFiles)) {
+            $fallbackUrl = '';
+            foreach ($videoFiles as $file) {
+                if (!empty($file['link'])) {
+                    $fallbackUrl = $file['link'];
+                    break;
+                }
+            }
+
+            $requiredSizes = ['tiny', 'small', 'medium', 'large'];
+            foreach ($requiredSizes as $size) {
+                if (!isset($sizes[$size])) {
+                    $sizes[$size] = ['url' => $fallbackUrl];
+                }
+            }
+        }
+
+        return $sizes;
+    }
+
+    public function import(string $url, string $filename, ?string $copyright = null): bool
+    {
+        if (!$this->isConfigured()) {
+            throw new \rex_exception('Pexels API key not configured');
+        }
+
+        try {
+            $filename = $this->sanitizeFilename($filename);
+            $extension = pathinfo(parse_url($url, PHP_URL_PATH), PATHINFO_EXTENSION);
+            
+            if (!$extension) {
+                $ch = curl_init($url);
+                curl_setopt_array($ch, [
+                    CURLOPT_RETURNTRANSFER => true,
+                    CURLOPT_NOBODY => true,
+                    CURLOPT_HEADER => true
+                ]);
+                $header = curl_exec($ch);
+                curl_close($ch);
+                
+                if (preg_match('/Content-Type: image\/(\w+)/i', $header, $matches)) {
+                    $extension = $matches[1];
+                } else {
+                    $extension = 'jpg';
+                }
+            }
+            
+            $filename = $filename . '.' . $extension;
+
+            if ($this->downloadFile($url, $filename)) {
+                if ($copyright) {
+                    $media = rex_media::get($filename);
+                    if ($media) {
+                        $sql = \rex_sql::factory();
+                        $sql->setTable(\rex::getTable('media'));
+                        $sql->setWhere(['filename' => $filename]);
+                        $sql->setValue('med_copyright', $copyright);
+                        $sql->update();
+                    }
+                }
+                return true;
+            }
+            
+            return false;
+
+        } catch (\Exception $e) {
+            \rex_logger::factory()->log(LogLevel::ERROR, 'Import error: ' . $e->getMessage(), [], __FILE__, __LINE__);
+            return false;
+        }
+    }
+
+    protected function isPexelsUrl(string $query): bool
+    {
+        return (bool)preg_match('#^https?://(?:www\.)?pexels\.com/(?:photo|video)/#i', $query);
+    }
+
+    protected function handlePexelsUrl(string $query): array
+    {
+        $id = $this->extractIdFromUrl($query);
+        if (!$id) {
+            return ['items' => [], 'total' => 0, 'page' => 1, 'total_pages' => 1];
+        }
+
+        // Try photo first
+        $item = $this->getById($id, 'image');
+        $type = 'image';
+        
+        // If not found, try video
+        if (!$item) {
+            $item = $this->getById($id, 'video');
+            $type = 'video';
+        }
+        
+        if ($item) {
+            $formattedItem = $this->formatItem($item, $type);
+            return [
+                'items' => [$formattedItem],
+                'total' => 1,
+                'page' => 1,
+                'total_pages' => 1
+            ];
+        }
+
+        return ['items' => [], 'total' => 0, 'page' => 1, 'total_pages' => 1];
+    }
+
+    protected function makeApiRequest(string $url, array $params = []): ?array
+    {
+        if (!empty($params)) {
+            $url .= '?' . http_build_query($params);
+        }
+
+        $ch = curl_init();
+        curl_setopt_array($ch, [
+            CURLOPT_URL => $url,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_SSL_VERIFYPEER => true,
+            CURLOPT_TIMEOUT => 20,
+            CURLOPT_HTTPHEADER => [
+                'Authorization: ' . $this->config['apikey']
+            ]
+        ]);
+
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        if ($response === false || $httpCode !== 200) {
+            \rex_logger::factory()->log(LogLevel::ERROR, 'API request failed: ' . $url, ['http_code' => $httpCode], __FILE__, __LINE__);
+            return null;
+        }
+
+        $data = json_decode($response, true);
+        if ($data === null) {
+            \rex_logger::factory()->log(LogLevel::ERROR, 'Invalid JSON response from API: ' . $url, [], __FILE__, __LINE__);
+            return null;
+        }
+
+        return $data;
+    }
+
+    protected function getById(int $id, string $type = 'image'): ?array
+    {
+        $endpoint = $type === 'video' ? 'videos/' . $id : 'photos/' . $id;
+        $baseUrl = $type === 'video' ? $this->apiUrlVideos : $this->apiUrl;
+        
+        return $this->makeApiRequest($baseUrl . $endpoint);
+    }
+
     protected function extractIdFromUrl(string $url): ?int
     {
         // Match URLs like:
@@ -79,362 +436,18 @@ class PexelsProvider extends AbstractProvider
         return null;
     }
 
-    /**
-     * Check if input is a Pexels URL
-     */
-    protected function isPexelsUrl(string $query): bool
+    public function getDefaultOptions(): array
     {
-        return (bool)preg_match('#^https?://(?:www\.)?pexels\.com/(?:photo|video)/#i', $query);
-    }
-
-    /**
-     * Get single photo by ID
-     */
-    protected function getPhotoById(int $id): ?array
-    {
-        $url = $this->apiUrl . 'photos/' . $id;
-        return $this->makeApiRequest($url);
-    }
-
-    /**
-     * Get single video by ID
-     */
-    protected function getVideoById(int $id): ?array
-    {
-        $url = $this->apiUrlVideos . '/videos/' . $id;
-        return $this->makeApiRequest($url);
-    }
-
-    protected function searchApi(string $query, int $page = 1, array $options = []): array
-    {
-        try {
-            if (!$this->isConfigured()) {
-                throw new \rex_exception('Pexels API key not configured');
-            }
-
-            // Check if query is a Pexels URL
-            if ($this->isPexelsUrl($query)) {
-                $id = $this->extractIdFromUrl($query);
-                if ($id) {
-                    // Try photo first
-                    $item = $this->getPhotoById($id);
-                    $type = 'image';
-                    
-                    // If not found, try video
-                    if (!$item) {
-                        $item = $this->getVideoById($id);
-                        $type = 'video';
-                    }
-                    
-                    if ($item) {
-                        $formattedItem = $this->formatItem($item, $type);
-                        return [
-                            'items' => [$formattedItem],
-                            'total' => 1,
-                            'page' => 1,
-                            'total_pages' => 1
-                        ];
-                    }
-                }
-                // If URL parsing failed, fall back to normal search
-            }
-
-            $type = $options['type'] ?? 'image';
-            $results = [];
-            $totalHits = 0;
-
-            // Erhöhe die Anzahl der Ergebnisse pro Seite
-            $perPage = $this->itemsPerPage * 2;
-
-            // Search for images
-            if ($type === 'all' || $type === 'image') {
-                // Versuche zuerst eine kuratierte Suche
-                $imageResults = $this->makeApiRequest(
-                    $this->apiUrl . 'curated',
-                    [
-                        'page' => $page,
-                        'per_page' => $type === 'all' ? intval($perPage / 2) : $perPage
-                    ]
-                );
-
-                // Wenn ein Suchbegriff vorhanden ist, führe auch eine normale Suche durch
-                if (!empty($query)) {
-                    $searchResults = $this->makeApiRequest(
-                        $this->apiUrl . 'search',
-                        [
-                            'query' => $query,
-                            'page' => $page,
-                            'per_page' => $type === 'all' ? intval($perPage / 2) : $perPage,
-                            'orientation' => 'landscape'  // Bevorzuge Landscape-Orientierung
-                        ]
-                    );
-
-                    if ($searchResults && isset($searchResults['photos'])) {
-                        $results = array_map(
-                            fn($item) => $this->formatItem($item, 'image'),
-                            $searchResults['photos']
-                        );
-                        $totalHits = $searchResults['total_results'];
-                    }
-                } 
-                // Wenn keine Suchergebnisse oder kein Suchbegriff, verwende kuratierte Ergebnisse
-                elseif ($imageResults && isset($imageResults['photos'])) {
-                    $results = array_map(
-                        fn($item) => $this->formatItem($item, 'image'),
-                        $imageResults['photos']
-                    );
-                    $totalHits = count($imageResults['photos']) * 10; // Schätzung der Gesamtanzahl
-                }
-            }
-
-            // Search for videos
-            if ($type === 'all' || $type === 'video') {
-                $videoParams = [
-                    'page' => $page,
-                    'per_page' => $type === 'all' ? intval($perPage / 2) : $perPage
-                ];
-
-                if (!empty($query)) {
-                    $videoParams['query'] = $query;
-                    $endpoint = 'search';
-                } else {
-                    $endpoint = 'popular'; // Verwende populäre Videos wenn kein Suchbegriff
-                }
-
-                $videoResults = $this->makeApiRequest(
-                    $this->apiUrlVideos . $endpoint,
-                    $videoParams
-                );
-
-                if ($videoResults && isset($videoResults['videos'])) {
-                    $videoItems = array_map(
-                        fn($item) => $this->formatItem($item, 'video'),
-                        $videoResults['videos']
-                    );
-                    
-                    if ($type === 'all') {
-                        $results = array_merge($results, $videoItems);
-                        $totalHits = isset($videoResults['total_results']) 
-                            ? intval(($totalHits + $videoResults['total_results']) / 2)
-                            : $totalHits + count($videoResults['videos']) * 10;
-                    } else {
-                        $results = $videoItems;
-                        $totalHits = $videoResults['total_results'] ?? count($videoResults['videos']) * 10;
-                    }
-                }
-            }
-
-            // Entferne Duplikate basierend auf der ID
-            $results = array_values(array_reduce($results, function($carry, $item) {
-                $carry[$item['id']] = $item;
-                return $carry;
-            }, []));
-
-            // Stelle sicher, dass wir nicht mehr als die maximale Anzahl zurückgeben
-            $results = array_slice($results, 0, $perPage);
-
-            return [
-                'items' => $results,
-                'total' => $totalHits,
-                'page' => $page,
-                'total_pages' => max(1, ceil($totalHits / $perPage))
-            ];
-            
-        } catch (\Exception $e) {
-            \rex_logger::factory()->log(LogLevel::ERROR, 'Exception in searchApi: {message}', ['message' => $e->getMessage()], __FILE__, __LINE__);
-            return [];
-        }
-    }
-
-    /**
-     * Format API item to standardized response
-     */
-    protected function formatItem(array $item, string $type): array
-    {
-        if ($type === 'video') {
-            // Sortiere Video-Files nach Qualität (HD zuerst)
-            $videoFiles = $item['video_files'] ?? [];
-            
-            // Gruppiere nach Qualität
-            $sizes = [];
-            foreach ($videoFiles as $file) {
-                $height = $file['height'] ?? 0;
-                $link = $file['link'] ?? '';
-                
-                if (empty($link)) continue;
-
-                if ($height >= 1080) {
-                    $sizes['large'] = ['url' => $link];
-                } elseif ($height >= 720) {
-                    $sizes['medium'] = ['url' => $link];
-                } elseif ($height >= 480) {
-                    $sizes['small'] = ['url' => $link];
-                } else {
-                    $sizes['tiny'] = ['url' => $link];
-                }
-            }
-
-            // Stelle sicher, dass alle Größen vorhanden sind
-            if (!empty($videoFiles)) {
-                $fallbackUrl = '';
-                // Suche die beste verfügbare Qualität als Fallback
-                foreach ($videoFiles as $file) {
-                    if (!empty($file['link'])) {
-                        $fallbackUrl = $file['link'];
-                        break;
-                    }
-                }
-
-                // Setze Fallback für fehlende Größen
-                $requiredSizes = ['tiny', 'small', 'medium', 'large'];
-                foreach ($requiredSizes as $size) {
-                    if (!isset($sizes[$size])) {
-                        $sizes[$size] = ['url' => $fallbackUrl];
-                    }
-                }
-            }
-
-            \rex_logger::factory()->log(\Psr\Log\LogLevel::DEBUG, 'Formatted video sizes: {sizes}', ['sizes' => $sizes], __FILE__, __LINE__);
-
-            return [
-                'id' => $item['id'],
-                'preview_url' => $item['image'] ?? '',
-                'title' => $item['duration'] ? sprintf('Video (%ds)', $item['duration']) : 'Video',
-                'author' => $item['user']['name'] ?? 'Pexels',
-                'type' => 'video',
-                'size' => $sizes
-            ];
-        }
-        
-        // Für Bilder
-        $sizes = [
-            'tiny' => ['url' => $item['src']['tiny'] ?? $item['src']['small'] ?? ''],
-            'small' => ['url' => $item['src']['small'] ?? $item['src']['medium'] ?? ''],
-            'medium' => ['url' => $item['src']['medium'] ?? $item['src']['large'] ?? ''],
-            'large' => ['url' => $item['src']['original'] ?? $item['src']['large2x'] ?? $item['src']['large'] ?? '']
-        ];
-
-        \rex_logger::factory()->log(\Psr\Log\LogLevel::DEBUG, 'Formatted image sizes: {sizes}', ['sizes' => $sizes], __FILE__, __LINE__);
-
         return [
-            'id' => $item['id'],
-            'preview_url' => $item['src']['medium'] ?? $item['src']['small'] ?? '',
-            'title' => $item['alt'] ?? $item['photographer'] ?? 'Image',
-            'author' => $item['photographer'] ?? 'Pexels',
             'type' => 'image',
-            'size' => $sizes
+            'orientation' => 'landscape',
+            'size' => 'medium'
         ];
     }
 
-    /**
-     * Get standardized quality label for video
-     */
-    protected function getVideoQualityLabel(array $file): ?string
+    protected function getCacheLifetime(): int
     {
-        $height = $file['height'];
-        $quality = $file['quality'];
-
-        if ($quality === 'hd' && $height >= 720) {
-            return 'large';
-        } elseif ($height >= 480) {
-            return 'medium';
-        } elseif ($height >= 360) {
-            return 'small';
-        } elseif ($height < 360) {
-            return 'tiny';
-        }
-
-        return null;
-    }
-
-    /**
-     * Make API request to Pexels
-     */
-    protected function makeApiRequest(string $url, array $params = []): ?array
-    {
-        if (!$this->isConfigured()) {
-            throw new \rex_exception('Pexels API key not configured');
-        }
-
-        if (!empty($params)) {
-            $url .= '?' . http_build_query($params, '', '&', PHP_QUERY_RFC3986);
-        }
-        
-        \rex_logger::factory()->log(LogLevel::INFO, 'Pexels API URL: {url}', ['url' => $url], __FILE__, __LINE__);
-
-        // Debug log für API Key (nur die ersten 4 Zeichen)
-        $apiKey = $this->config['apikey'];
-        $maskedKey = substr($apiKey, 0, 4) . '...';
-        \rex_logger::factory()->log(LogLevel::DEBUG, 'Using Pexels API key: {key}', ['key' => $maskedKey], __FILE__, __LINE__);
-
-        $ch = curl_init();
-        curl_setopt_array($ch, [
-            CURLOPT_URL => $url,
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_SSL_VERIFYPEER => true,
-            CURLOPT_TIMEOUT => 20,
-            CURLOPT_HTTPHEADER => [
-                'Authorization: ' . $apiKey
-            ]
-        ]);
-
-        $response = curl_exec($ch);
-        
-        if ($response === false) {
-            $errorMessage = 'Curl error: ' . curl_error($ch) . ' - URL: ' . $url;
-            \rex_logger::factory()->log(LogLevel::ERROR, 'Curl Error: {message}', ['message' => $errorMessage], __FILE__, __LINE__);
-            curl_close($ch);
-            return null;
-        }
-
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
-
-        if ($httpCode !== 200) {
-            $errorMessage = 'Invalid HTTP response code: ' . $httpCode . ' - URL: ' . $url;
-            \rex_logger::factory()->log(LogLevel::ERROR, 'HTTP Error: {message}', ['message' => $errorMessage], __FILE__, __LINE__);
-            return null;
-        }
-
-        $data = json_decode($response, true);
-        if ($data === null) {
-            $errorMessage = 'Invalid JSON response from Pexels API - URL: ' . $url;
-            \rex_logger::factory()->log(LogLevel::ERROR, 'Invalid API Response: {message}', ['message' => $errorMessage], __FILE__, __LINE__);
-            return null;
-        }
-
-        return $data;
-    }
-
-    public function import(string $url, string $filename): bool
-    {
-        if (!$this->isConfigured()) {
-            throw new \rex_exception('Pexels API key not configured');
-        }
-
-        $filename = $this->sanitizeFilename($filename);
-        
-        $extension = pathinfo(parse_url($url, PHP_URL_PATH), PATHINFO_EXTENSION);
-        if (!$extension) {
-            // Determine extension based on URL or Content-Type
-            $ch = curl_init($url);
-            curl_setopt_array($ch, [
-                CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_NOBODY => true,
-                CURLOPT_HEADER => true
-            ]);
-            $header = curl_exec($ch);
-            curl_close($ch);
-            
-            if (preg_match('/Content-Type: image\/(\w+)/i', $header, $matches)) {
-                $extension = $matches[1];
-            } else {
-                $extension = 'jpg'; // Fallback
-            }
-        }
-        
-        $filename = $filename . '.' . $extension;
-
-        return $this->downloadFile($url, $filename);
+        // 24 Stunden Cache
+        return 86400;
     }
 }

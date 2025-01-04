@@ -1,68 +1,91 @@
-/* Default light mode variables */
+/* CSS-Variablen für Light/Dark Mode */
 :root,
 .rex-theme-light {
     --ai-bg-color: #fff;
     --ai-border-color: #e9ecef;
-    --ai-shadow-color: rgba(0,0,0,0.1);
+    --ai-shadow-color: rgba(0, 0, 0, 0.1);
     --ai-preview-bg: #f8f9fa;
     --ai-text-color: #666;
-    --ai-hover-transform: scale(1.05);
-    --ai-transition-speed: 0.3s;
-    --ai-preview-opacity: 1;
-    --ai-preview-hover-opacity: 1;
+    --ai-hover-bg: rgba(0, 0, 0, 0.03);
+    --ai-card-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    --ai-transition: 0.3s ease;
+    --ai-preview-overlay: rgba(0, 0, 0, 0.1);
+    --ai-btn-hover: rgba(0, 0, 0, 0.1);
 }
 
-/* Dark mode variables */
+/* Dark Mode Variablen */
 @media (prefers-color-scheme: dark) {
     :root:not(.rex-theme-light) {
         --ai-bg-color: #32373c;
         --ai-border-color: #404850;
-        --ai-shadow-color: rgba(0,0,0,0.25);
+        --ai-shadow-color: rgba(0, 0, 0, 0.25);
         --ai-preview-bg: #282c34;
         --ai-text-color: #b4b4b4;
-        --ai-preview-opacity: 0.9;
-        --ai-preview-hover-opacity: 1;
+        --ai-hover-bg: rgba(255, 255, 255, 0.05);
+        --ai-card-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        --ai-preview-overlay: rgba(0, 0, 0, 0.2);
+        --ai-btn-hover: rgba(255, 255, 255, 0.1);
     }
 }
 
-/* REDAXO dark mode */
+/* REDAXO Dark Mode */
 .rex-theme-dark {
     --ai-bg-color: #32373c;
     --ai-border-color: #404850;
-    --ai-shadow-color: rgba(0,0,0,0.25);
+    --ai-shadow-color: rgba(0, 0, 0, 0.25);
     --ai-preview-bg: #282c34;
     --ai-text-color: #b4b4b4;
-    --ai-preview-opacity: 0.9;
-    --ai-preview-hover-opacity: 1;
+    --ai-hover-bg: rgba(255, 255, 255, 0.05);
+    --ai-card-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    --ai-preview-overlay: rgba(0, 0, 0, 0.2);
+    --ai-btn-hover: rgba(255, 255, 255, 0.1);
 }
 
 .asset-import-container {
     padding: 20px 0;
 }
 
+/* Verbesserte Touch-Bereiche */
 .asset-import-search {
     margin-bottom: 20px;
 }
 
+.asset-import-search .input-group {
+    margin-bottom: 10px;
+}
+
+.asset-import-search .btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Responsive Grid mit besserer Touch-Unterstützung */
 .asset-import-results {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
     gap: 20px;
     margin-top: 20px;
 }
 
+/* Verbesserte Karten-Darstellung */
 .asset-import-item {
     background: var(--ai-bg-color);
     border: 1px solid var(--ai-border-color);
-    border-radius: 4px;
+    border-radius: 8px;
     overflow: hidden;
-    transition: box-shadow var(--ai-transition-speed) ease;
+    transition: box-shadow var(--ai-transition), transform var(--ai-transition);
+    box-shadow: var(--ai-card-shadow);
+    position: relative;
 }
 
-.asset-import-item:hover {
-    box-shadow: 0 2px 8px var(--ai-shadow-color);
+.asset-import-item:hover,
+.asset-import-item:focus-within {
+    box-shadow: 0 4px 8px var(--ai-shadow-color);
+    transform: translateY(-2px);
 }
 
+/* Optimierte Vorschau-Darstellung */
 .asset-import-preview {
     position: relative;
     padding-bottom: 75%;
@@ -78,58 +101,111 @@
     width: 100%;
     height: 100%;
     object-fit: cover;
-    opacity: var(--ai-preview-opacity);
-    transition: transform var(--ai-transition-speed) ease, opacity var(--ai-transition-speed) ease;
+    transition: transform var(--ai-transition);
 }
 
-.asset-import-preview img:hover,
-.asset-import-preview video:hover {
-    transform: var(--ai-hover-transform);
-    opacity: var(--ai-preview-hover-opacity);
+.asset-import-item:hover  {
+    opacity: 1;
 }
 
+/* Verbesserte Info-Darstellung */
 .asset-import-info {
     padding: 15px;
 }
 
 .asset-import-title {
-    margin: 0 0 10px 0;
+    margin: 0 0 15px 0;
     font-size: 14px;
     color: var(--ai-text-color);
     word-break: break-word;
 }
 
+/* Touch-optimierte Aktionen */
 .asset-import-actions {
-    display: flex;
+    display: grid;
     gap: 10px;
-    margin-top: 10px;
+    margin-top: 15px;
 }
 
+.asset-import-actions .btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    padding: 10px 20px;
+    transition: background-color var(--ai-transition);
+}
+
+.asset-import-actions .btn:hover {
+    background-color: var(--ai-btn-hover);
+}
+
+/* Verbesserte Select-Darstellung */
 .asset-import-size-select {
     width: 100%;
     background-color: var(--ai-bg-color);
     color: var(--ai-text-color);
     border-color: var(--ai-border-color);
+    padding: 10px;
+    border-radius: 4px;
 }
 
 .asset-import-size-select option {
     background-color: var(--ai-bg-color);
     color: var(--ai-text-color);
+    padding: 10px;
 }
 
-.asset-import-load-more {
-    text-align: center;
-    margin-top: 30px;
-}
-
-.asset-import-attribution {
-    margin-top: 20px;
-    color: var(--ai-text-color);
-    font-size: 12px;
-    text-align: center;
+/* Status und Progress */
+.asset-import-status {
+    padding: 15px;
+    margin: 20px 0;
+    border-radius: 4px;
 }
 
 .progress {
     margin: 10px 0;
-    display: none;
+    height: 44px;
+    border-radius: 4px;
+    background-color: var(--ai-preview-bg);
+}
+
+.progress-bar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    transition: width 0.3s ease;
+}
+
+/* Load More Button */
+.asset-import-load-more {
+    margin-top: 30px;
+    text-align: center;
+}
+
+.asset-import-load-more .btn {
+    min-height: 44px;
+    min-width: 200px;
+    padding: 10px 30px;
+}
+
+/* Mobile Optimierungen */
+@media (max-width: 768px) {
+    .asset-import-results {
+        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    }
+
+    .asset-import-search .input-group {
+        flex-direction: column;
+    }
+
+    .asset-import-search .input-group-btn {
+        margin-top: 10px;
+        width: 100%;
+    }
+
+    .asset-import-search .btn {
+        width: 100%;
+    }
 }
