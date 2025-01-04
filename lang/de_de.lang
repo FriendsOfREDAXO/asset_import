@@ -44,6 +44,7 @@ asset_import_provider_pexels_copyright_format_notice = Wähle das Format für di
 asset_import_copyright_format_extended = Erweitert (Autor, Lizenz & Quelle)
 asset_import_copyright_format_simple = Einfach (nur Quelle)
 asset_import_provider_copyright_fields = Copyright-Felder
+asset_import_provider_copyright_notice = In welchem Format sollen die Copyrights gespeichert werden
 
 
 # Copyright Info
