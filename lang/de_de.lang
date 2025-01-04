@@ -30,7 +30,7 @@ asset_import_config_saved = Einstellungen wurden gespeichert
 
 # Pixabay Provider
 asset_import_provider_pixabay_apikey = Pixabay API-Key
-asset_import_provider_pixabay_apikey_notice = API-Key von Pixabay.com
+asset_import_provider_pixabay_apikey_notice = API-Key von Pixabay.com / https://pixabay.com/api/docs/
 asset_import_provider_pixabay_copyright_format = Copyright-Format
 asset_import_provider_pixabay_copyright_format_notice = Wähle das Format für die Copyright-Informationen
 
