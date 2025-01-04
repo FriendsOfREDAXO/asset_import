@@ -39,8 +39,10 @@ foreach ($providers as $id => $class) {
     }
     
     $content .= '<fieldset><legend>' . $provider->getTitle() . '</legend>';
+    $fragment = new \rex_fragment();
+    
     $formElements = [];
-
+    
     foreach ($fields as $field) {
         $n = [];
         $value = $addon->getConfig($id)[$field['name']] ?? '';
@@ -73,13 +75,12 @@ foreach ($providers as $id => $class) {
         }
 
         if (isset($field['notice'])) {
-            $n['notice'] = \rex_i18n::msg($field['notice']);
+            $n['notice'] = '<p class="help-block">' . \rex_i18n::msg($field['notice']) . '</p>';
         }
 
         $formElements[] = $n;
     }
 
-    $fragment = new \rex_fragment();
     $fragment->setVar('elements', $formElements, false);
     $content .= $fragment->parse('core/form/form.php');
     $content .= '</fieldset>';
