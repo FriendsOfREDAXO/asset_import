@@ -29,13 +29,13 @@ asset_import_config_saved = Settings saved
 
 # Pixabay Provider
 asset_import_provider_pixabay_apikey = Pixabay API key
-asset_import_provider_pixabay_apikey_notice = API key from Pixabay.com
+asset_import_provider_pixabay_apikey_notice = API key from Pixabay.com |  https://pixabay.com/api/docs/
 asset_import_provider_pixabay_copyright_format = Copyright Format
 asset_import_provider_pixabay_copyright_format_notice = Choose the format for copyright information
 
 # Pexels Provider
 asset_import_provider_pexels_apikey = Pexels API key
-asset_import_provider_pexels_apikey_notice = API key from Pexels.com
+asset_import_provider_pexels_apikey_notice = API key from Pexels.com |  https://www.pexels.com/api/key/
 asset_import_provider_pexels_copyright_format = Copyright Format
 asset_import_provider_pexels_copyright_format_notice = Choose the format for copyright information
 
