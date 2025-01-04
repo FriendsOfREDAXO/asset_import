@@ -75,7 +75,7 @@ foreach ($providers as $id => $class) {
         }
 
         if (isset($field['notice'])) {
-            $n['notice'] = '<p class="help-block">' . \rex_i18n::msg($field['notice']) . '</p>';
+            $n['note'] = '<p class="help-block">' . \rex_i18n::msg($field['notice']) . '</p>';
         }
 
         $formElements[] = $n;
