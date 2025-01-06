@@ -219,9 +219,9 @@ class PexelsProvider extends AbstractProvider
             'copyright' => $copyright,
             'type' => 'image',
             'size' => [
+                'medium' => ['url' => $item['src']['medium'] ?? $item['src']['large'] ?? ''], 
                 'tiny' => ['url' => $item['src']['tiny'] ?? $item['src']['small'] ?? ''],
                 'small' => ['url' => $item['src']['small'] ?? $item['src']['medium'] ?? ''],
-                'medium' => ['url' => $item['src']['medium'] ?? $item['src']['large'] ?? ''],
                 'large' => ['url' => $item['src']['original'] ?? $item['src']['large2x'] ?? $item['src']['large'] ?? '']
             ]
         ];
