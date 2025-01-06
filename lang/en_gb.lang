@@ -18,6 +18,8 @@ asset_import_preview = Preview
 asset_import_import = Import
 asset_import_import_success = File has been imported successfully
 asset_import_import_error = Error importing file
+asset_import_error_loading = No results could be retrieved. API key correct?
+
 
 asset_import_target_category = Target category
 asset_import_category_notice = Choose the category to import files into
