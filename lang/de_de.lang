@@ -18,6 +18,7 @@ asset_import_importing = Importiere…
 asset_import_preview = Vorschau
 asset_import_import = Importieren
 asset_import_import_success = Die Datei wurde erfolgreich importiert
+asset_import_error_loading = Es konnten keine Ergebnisse ermittelt werden, ist der API-Key korrekt?
 asset_import_import_error = Fehler beim Import der Datei
 
 asset_import_target_category = Zielkategorie
