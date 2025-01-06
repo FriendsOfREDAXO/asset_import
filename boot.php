@@ -23,12 +23,12 @@ if (rex_backend_login::hasSession()) {
     rex_csrf_token::factory('asset_import');
 }
 
-// Register default providers
-AssetImporter::registerProvider(PixabayProvider::class);
-AssetImporter::registerProvider(PexelsProvider::class);
-
 // Only execute in backend and for logged-in users
 if (rex::isBackend() && rex::getUser()) {
+
+    // Register default providers
+    AssetImporter::registerProvider(PixabayProvider::class);
+    AssetImporter::registerProvider(PexelsProvider::class); 
     
     // Register assets for the asset_import pages
     if (rex_be_controller::getCurrentPage() === 'asset_import/main' || 
