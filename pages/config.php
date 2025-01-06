@@ -94,7 +94,7 @@ if (!empty($content)) {
     $formElements = [];
     $n = [];
     $n['field'] = '<button class="btn btn-save rex-form-aligned" type="submit" name="config-submit" value="1">' 
-        . \rex_i18n::msg('save') 
+        . \rex_i18n::msg('asset_import_save') 
         . '</button>';
     $formElements[] = $n;
 
