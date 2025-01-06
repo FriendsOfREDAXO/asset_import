@@ -188,9 +188,9 @@ class PixabayProvider extends AbstractProvider
             'copyright' => $copyright,
             'type' => 'image',
             'size' => [
+                'medium' => ['url' => $item['largeImageURL']],
                 'tiny' => ['url' => $item['previewURL']],
                 'small' => ['url' => $item['webformatURL']],
-                'medium' => ['url' => $item['largeImageURL']],
                 'large' => ['url' => $item['imageURL'] ?? $item['largeImageURL']]
             ]
         ];
@@ -244,9 +244,9 @@ class PixabayProvider extends AbstractProvider
     protected function formatVideoSizes(array $item): array
     {
         $sizes = [
+            'medium' => ['url' => ''],
             'tiny' => ['url' => ''],
             'small' => ['url' => ''],
-            'medium' => ['url' => ''],
             'large' => ['url' => '']
         ];
         
