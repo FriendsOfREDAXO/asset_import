@@ -26,6 +26,7 @@ asset_import_category_notice = In welche Kategorie sollen die Dateien importiert
 asset_import_provider_error = Provider nicht konfiguriert
 asset_import_provider_missing = Provider nicht gefunden
 
+asset_import_save = Einstellungen speichern
 asset_import_config_saved = Einstellungen wurden gespeichert
 
 # Pixabay Provider
