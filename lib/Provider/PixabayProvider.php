@@ -387,7 +387,7 @@ class PixabayProvider extends AbstractProvider
     {
         $url = $url . '?' . http_build_query($params, '', '&', PHP_QUERY_RFC3986);
 
-        \rex_logger::factory()->log(LogLevel::DEBUG, 'Pixabay API request: {url}', ['url' => $url], __FILE__, __LINE__);
+       // \rex_logger::factory()->log(LogLevel::DEBUG, 'Pixabay API request: {url}', ['url' => $url], __FILE__, __LINE__);
 
         $ch = curl_init();
         curl_setopt_array($ch, [
