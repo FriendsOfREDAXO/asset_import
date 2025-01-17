@@ -11,6 +11,12 @@ class PixabayProvider extends AbstractProvider
     protected string $apiUrlVideos = 'https://pixabay.com/api/videos/';
     protected int $itemsPerPage = 20;
 
+    public function __construct(array $config = [])
+    {
+        parent::__construct($config);
+         $this->config = $config; // Konfiguration laden
+    }
+
     public function getName(): string
     {
         return 'pixabay';
@@ -26,27 +32,27 @@ class PixabayProvider extends AbstractProvider
         return 'fa-images';
     }
 
-   public function getConfigFields(): array
-{
-    return [
-        [
-            'label' => 'asset_import_provider_pixabay_apikey',
-            'name' => 'apikey',
-            'type' => 'text',
-            'notice' => 'asset_import_provider_pixabay_apikey_notice'
-        ],
-        [
-            'label' => 'asset_import_provider_copyright_fields',
-            'name' => 'copyright_fields',
-            'type' => 'select',
-            'options' => [
-                ['label' => 'Username + Pixabay', 'value' => 'user_pixabay'],
-                 ['label' => 'Only Pixabay', 'value' => 'pixabay']
+    public function getConfigFields(): array
+    {
+        return [
+            [
+                'label' => 'asset_import_provider_pixabay_apikey',
+                'name' => 'apikey',
+                'type' => 'text',
+                'notice' => 'asset_import_provider_pixabay_apikey_notice'
             ],
-            'notice' => 'asset_import_provider_copyright_notice'
-        ]
-    ];
-}
+            [
+                'label' => 'asset_import_provider_copyright_fields',
+                'name' => 'copyright_fields',
+                'type' => 'select',
+                'options' => [
+                    ['label' => 'Username + Pixabay', 'value' => 'user_pixabay'],
+                    ['label' => 'Only Pixabay', 'value' => 'pixabay']
+                ],
+                'notice' => 'asset_import_provider_copyright_notice'
+            ]
+        ];
+    }
 
     public function isConfigured(): bool
     {
@@ -214,36 +220,26 @@ class PixabayProvider extends AbstractProvider
         return $title;
     }
 
-  protected function formatCopyright(array $item): string
-{
-    $copyrightFields = $this->config['copyright_fields'] ?? 'user_pixabay';
-    $parts = [];
+    protected function formatCopyright(array $item): string
+    {
+        $copyrightFields = $this->config['copyright_fields'] ?? 'user_pixabay';
+        $parts = [];
 
-    \rex_logger::factory()->log(LogLevel::DEBUG, 'formatCopyright: copyrightFields={copyrightFields}, item={item}', [
-        'copyrightFields' => $copyrightFields,
-        'item' => $item,
-    ], __FILE__, __LINE__);
+        switch ($copyrightFields) {
+             case 'user_pixabay':
+                if (!empty($item['user'])) {
+                    $parts[] = $item['user'];
+                }
+                $parts[] = 'Pixabay.com';
+                break;
+            case 'pixabay':
+            default:
+                $parts[] = 'Pixabay.com';
+                break;
+        }
 
-    switch ($copyrightFields) {
-        case 'user_pixabay':
-            if (!empty($item['user'])) {
-                $parts[] = $item['user'];
-            }
-            $parts[] = 'Pixabay.com';
-            break;
-        case 'pixabay':
-        default:
-            $parts[] = 'Pixabay.com';
-            break;
+        return implode(' / ', array_filter($parts));
     }
-
-    \rex_logger::factory()->log(LogLevel::DEBUG, 'formatCopyright: parts={parts}', [
-        'parts' => $parts,
-    ], __FILE__, __LINE__);
-
-    return implode(' / ', array_filter($parts));
-}
-
 
     protected function formatVideoSizes(array $item): array
     {
@@ -390,8 +386,6 @@ class PixabayProvider extends AbstractProvider
     protected function makeApiRequest(string $url, array $params): ?array
     {
         $url = $url . '?' . http_build_query($params, '', '&', PHP_QUERY_RFC3986);
-
-       // \rex_logger::factory()->log(LogLevel::DEBUG, 'Pixabay API request: {url}', ['url' => $url], __FILE__, __LINE__);
 
         $ch = curl_init();
         curl_setopt_array($ch, [
