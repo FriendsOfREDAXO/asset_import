@@ -26,28 +26,27 @@ class PixabayProvider extends AbstractProvider
         return 'fa-images';
     }
 
-    public function getConfigFields(): array
-    {
-        return [
-            [
-                'label' => 'asset_import_provider_pixabay_apikey',
-                'name' => 'apikey',
-                'type' => 'text',
-                'notice' => 'asset_import_provider_pixabay_apikey_notice'
+   public function getConfigFields(): array
+{
+    return [
+        [
+            'label' => 'asset_import_provider_pixabay_apikey',
+            'name' => 'apikey',
+            'type' => 'text',
+            'notice' => 'asset_import_provider_pixabay_apikey_notice'
+        ],
+        [
+            'label' => 'asset_import_provider_copyright_fields',
+            'name' => 'copyright_fields',
+            'type' => 'select',
+            'options' => [
+                ['label' => 'Username + Pixabay', 'value' => 'user_pixabay'],
+                 ['label' => 'Only Pixabay', 'value' => 'pixabay']
             ],
-            [
-                'label' => 'asset_import_provider_copyright_fields',
-                'name' => 'copyright_fields',
-                'type' => 'select',
-                'options' => [
-                    ['label' => 'Username + Pixabay', 'value' => 'user_pixabay'],
-                    ['label' => 'Only Username', 'value' => 'user'],
-                    ['label' => 'Only Pixabay', 'value' => 'pixabay']
-                ],
-                'notice' => 'asset_import_provider_copyright_notice'
-            ]
-        ];
-    }
+            'notice' => 'asset_import_provider_copyright_notice'
+        ]
+    ];
+}
 
     public function isConfigured(): bool
     {
@@ -215,34 +214,26 @@ class PixabayProvider extends AbstractProvider
         return $title;
     }
 
-    protected function formatCopyright(array $item): string
-    {
+   protected function formatCopyright(array $item): string
+   {
     $copyrightFields = $this->config['copyright_fields'] ?? 'user_pixabay';
     $parts = [];
 
     switch ($copyrightFields) {
-        case 'user':
+         case 'user_pixabay':
             if (!empty($item['user'])) {
                 $parts[] = $item['user'];
             }
-            break;
+           $parts[] = 'Pixabay.com';
+           break;
         case 'pixabay':
+        default:
             $parts[] = 'Pixabay.com';
             break;
-         case 'user_pixabay':
-        default:
-            if (!empty($item['user'])) {
-                $parts[] = $item['user'];
-            }
-            else {$parts[] = '';}
-            if (empty($item['user']) || $copyrightFields === 'user_pixabay') {
-                 // Füge 'Pixabay.com' nur hinzu, wenn der User leer ist oder die Einstellung 'user_pixabay' ist.
-                if (!in_array('Pixabay.com', $parts, true)) {
-                    $parts[] = 'Pixabay.com';
-                }
-            }
-        break;
     }
+
+    return implode(' / ', array_filter($parts));
+  }
 
     return implode(' / ', array_filter($parts));
     }
