@@ -215,7 +215,7 @@ class PixabayProvider extends AbstractProvider
         return $title;
     }
 
-    pprotected function formatCopyright(array $item): string
+    protected function formatCopyright(array $item): string
     {
     $copyrightFields = $this->config['copyright_fields'] ?? 'user_pixabay';
     $parts = [];
