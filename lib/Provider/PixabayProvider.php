@@ -235,8 +235,6 @@ class PixabayProvider extends AbstractProvider
     return implode(' / ', array_filter($parts));
   }
 
-    return implode(' / ', array_filter($parts));
-    }
 
     protected function formatVideoSizes(array $item): array
     {
