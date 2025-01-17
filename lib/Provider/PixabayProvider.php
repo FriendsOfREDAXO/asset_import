@@ -214,26 +214,35 @@ class PixabayProvider extends AbstractProvider
         return $title;
     }
 
-   protected function formatCopyright(array $item): string
-   {
+  protected function formatCopyright(array $item): string
+{
     $copyrightFields = $this->config['copyright_fields'] ?? 'user_pixabay';
     $parts = [];
 
+    \rex_logger::factory()->log(LogLevel::DEBUG, 'formatCopyright: copyrightFields={copyrightFields}, item={item}', [
+        'copyrightFields' => $copyrightFields,
+        'item' => $item,
+    ], __FILE__, __LINE__);
+
     switch ($copyrightFields) {
-         case 'user_pixabay':
+        case 'user_pixabay':
             if (!empty($item['user'])) {
                 $parts[] = $item['user'];
             }
-           $parts[] = 'Pixabay.com';
-           break;
+            $parts[] = 'Pixabay.com';
+            break;
         case 'pixabay':
         default:
             $parts[] = 'Pixabay.com';
             break;
     }
 
+    \rex_logger::factory()->log(LogLevel::DEBUG, 'formatCopyright: parts={parts}', [
+        'parts' => $parts,
+    ], __FILE__, __LINE__);
+
     return implode(' / ', array_filter($parts));
-  }
+}
 
 
     protected function formatVideoSizes(array $item): array
