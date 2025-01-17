@@ -11,11 +11,6 @@ class PixabayProvider extends AbstractProvider
     protected string $apiUrlVideos = 'https://pixabay.com/api/videos/';
     protected int $itemsPerPage = 20;
 
-    public function __construct(array $config = [])
-    {
-        parent::__construct($config);
-         $this->config = $config; // Konfiguration laden
-    }
 
     public function getName(): string
     {
@@ -61,6 +56,9 @@ class PixabayProvider extends AbstractProvider
         if (!$isConfigured) {
             \rex_logger::factory()->log(LogLevel::WARNING, 'Pixabay provider not configured correctly.', [], __FILE__, __LINE__);
         }
+         \rex_logger::factory()->log(LogLevel::DEBUG, 'isConfigured: config={config}', [
+            'config' => $this->config,
+         ], __FILE__, __LINE__);
         
         return $isConfigured;
     }
