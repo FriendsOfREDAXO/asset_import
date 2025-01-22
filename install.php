@@ -1,6 +1,4 @@
 <?php
-
-
 // Erstelle Cache-Tabelle mit rex_sql_table für bessere Updatefähigkeit
 $table = \rex_sql_table::get(\rex::getTable('asset_import_cache'));
 
@@ -22,4 +20,3 @@ $table
 
 // Erstelle oder aktualisiere die Tabelle
 $table->ensure();
-
