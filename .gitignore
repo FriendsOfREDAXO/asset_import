@@ -12,3 +12,15 @@ modules.xml
 .idea/vcs.xml
 .idea/encodings.xml
 *.ipr
+fragments/.DS_Store
+/node_modules/
+/tests_output/
+/.env
+/test-results/
+/playwright-report/
+/playwright/.cache/
+/screens/
+/.idea
+/composer.lock
+/.php-cs-fixer.cache
+/vendor
