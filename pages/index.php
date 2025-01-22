@@ -1,4 +1,5 @@
 <?php
+
 namespace FriendsOfRedaxo\AssetImport;
 
 use rex_addon;

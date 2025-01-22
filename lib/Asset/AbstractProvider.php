@@ -1,18 +1,35 @@
 <?php
+
 namespace FriendsOfRedaxo\AssetImport\Asset;
 
+use Exception;
 use FriendsOfRedaxo\AssetImport\Provider\ProviderInterface;
-use rex_path;
-use rex_media;
-use rex_sql;
+use rex;
+use rex_addon;
 use rex_logger;
-use Psr\Log\LogLevel;
+use rex_media_service;
+use rex_path;
+use rex_sql;
+use rex_string;
+
+use function in_array;
+use function strlen;
+
+use const CURLINFO_HTTP_CODE;
+use const CURLOPT_FILE;
+use const CURLOPT_FOLLOWLOCATION;
+use const CURLOPT_HEADER;
+use const CURLOPT_SSL_VERIFYPEER;
+use const CURLOPT_TIMEOUT;
+use const CURLOPT_USERAGENT;
+use const PATHINFO_EXTENSION;
+use const PATHINFO_FILENAME;
 
 abstract class AbstractProvider implements ProviderInterface
 {
     protected array $config = [];
     protected array $defaultConfig = [
-        'copyright_fields' => 'all'  // Default Copyright-Einstellung
+        'copyright_fields' => 'all',  // Default Copyright-Einstellung
     ];
 
     public function __construct()
@@ -24,39 +41,39 @@ abstract class AbstractProvider implements ProviderInterface
     {
         $this->config = array_merge(
             $this->defaultConfig,
-            \rex_addon::get('asset_import')->getConfig($this->getName()) ?? []
+            rex_addon::get('asset_import')->getConfig($this->getName()) ?? [],
         );
     }
 
     protected function saveConfig(array $config): void
     {
         $this->config = array_merge($this->defaultConfig, $config);
-        \rex_addon::get('asset_import')->setConfig($this->getName(), $this->config);
+        rex_addon::get('asset_import')->setConfig($this->getName(), $this->config);
     }
 
-    public function getDefaultOptions(): array 
+    public function getDefaultOptions(): array
     {
         return [
             'type' => 'all',
             'safesearch' => true,
-            'lang' => \rex::getUser()->getLanguage()
+            'lang' => rex::getUser()->getLanguage(),
         ];
     }
 
     /**
-     * Führt die Suche durch und handhabt das Caching
+     * Führt die Suche durch und handhabt das Caching.
      */
     public function search(string $query, int $page = 1, array $options = []): array
     {
         try {
             $cacheKey = $this->buildCacheKey($query, $page, $options);
-            
+
             // Füge die aktuelle Copyright-Einstellung zum Cache-Key hinzu
             $cacheKey .= '_' . ($this->config['copyright_fields'] ?? 'default');
-            
+
             $cachedResult = $this->getCachedResponse($cacheKey);
 
-            if ($cachedResult !== null) {
+            if (null !== $cachedResult) {
                 return $cachedResult;
             }
 
@@ -64,24 +81,24 @@ abstract class AbstractProvider implements ProviderInterface
             $this->cacheResponse($cacheKey, $result);
 
             return $result;
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             rex_logger::logException($e);
             return [
-                'items' => [], 
-                'total' => 0, 
-                'page' => $page, 
-                'total_pages' => 0
+                'items' => [],
+                'total' => 0,
+                'page' => $page,
+                'total_pages' => 0,
             ];
         }
     }
 
     /**
-     * API-Suche - muss von konkreten Provider-Klassen implementiert werden
+     * API-Suche - muss von konkreten Provider-Klassen implementiert werden.
      */
     abstract protected function searchApi(string $query, int $page = 1, array $options = []): array;
 
     /**
-     * Generiert einen eindeutigen Cache-Key
+     * Generiert einen eindeutigen Cache-Key.
      */
     protected function buildCacheKey(string $query, int $page, array $options): string
     {
@@ -90,58 +107,58 @@ abstract class AbstractProvider implements ProviderInterface
             'query' => $query,
             'page' => $page,
             'options' => $options,
-            'lang' => \rex::getUser()->getLanguage(),
-            'copyright_fields' => $this->config['copyright_fields'] ?? 'default' // Wichtig: Copyright-Einstellung mit in Cache-Key
+            'lang' => rex::getUser()->getLanguage(),
+            'copyright_fields' => $this->config['copyright_fields'] ?? 'default', // Wichtig: Copyright-Einstellung mit in Cache-Key
         ];
-        
+
         return md5(serialize($data));
     }
 
     /**
-     * Liest gecachte Antwort
+     * Liest gecachte Antwort.
      */
     protected function getCachedResponse(string $cacheKey): ?array
     {
         $sql = rex_sql::factory();
         $sql->setQuery('
-            SELECT response 
-            FROM ' . \rex::getTable('asset_import_cache') . '
-            WHERE provider = :provider 
+            SELECT response
+            FROM ' . rex::getTable('asset_import_cache') . '
+            WHERE provider = :provider
             AND cache_key = :cache_key
             AND valid_until > NOW()',
             [
                 'provider' => $this->getName(),
-                'cache_key' => $cacheKey
-            ]
+                'cache_key' => $cacheKey,
+            ],
         );
-        
+
         if ($sql->getRows() > 0) {
             return json_decode($sql->getValue('response'), true);
         }
-        
+
         return null;
     }
 
     /**
-     * Speichert API-Antwort im Cache
+     * Speichert API-Antwort im Cache.
      */
     protected function cacheResponse(string $cacheKey, array $response): void
     {
         // Alte Cache-Einträge löschen
         $sql = rex_sql::factory();
         $sql->setQuery('
-            DELETE FROM ' . \rex::getTable('asset_import_cache') . '
-            WHERE provider = :provider 
+            DELETE FROM ' . rex::getTable('asset_import_cache') . '
+            WHERE provider = :provider
             AND (valid_until < NOW() OR cache_key = :cache_key)',
             [
                 'provider' => $this->getName(),
-                'cache_key' => $cacheKey
-            ]
+                'cache_key' => $cacheKey,
+            ],
         );
 
         // Neuen Cache-Eintrag erstellen
         $sql = rex_sql::factory();
-        $sql->setTable(\rex::getTable('asset_import_cache'));
+        $sql->setTable(rex::getTable('asset_import_cache'));
         $sql->setValue('provider', $this->getName());
         $sql->setValue('cache_key', $cacheKey);
         $sql->setValue('response', json_encode($response));
@@ -151,106 +168,105 @@ abstract class AbstractProvider implements ProviderInterface
     }
 
     /**
-     * Bereinigt Dateinamen
+     * Bereinigt Dateinamen.
      */
     protected function sanitizeFilename(string $filename): string
     {
         $filename = mb_convert_encoding($filename, 'UTF-8', 'auto');
-        $filename = \rex_string::normalize($filename);
-        
+        $filename = rex_string::normalize($filename);
+
         // Entferne alle nicht erlaubten Zeichen
         $filename = preg_replace('/[^a-zA-Z0-9_\-.]/', '_', $filename);
-        
+
         // Entferne mehrfache Unterstriche
         $filename = preg_replace('/_+/', '_', $filename);
-        
+
         // Kürze zu lange Dateinamen
         $maxLength = 100;
         $extension = pathinfo($filename, PATHINFO_EXTENSION);
         $name = pathinfo($filename, PATHINFO_FILENAME);
-        
+
         if (strlen($name) > $maxLength) {
             $name = substr($name, 0, $maxLength);
             $filename = $name . '.' . $extension;
         }
-        
+
         return trim($filename, '_');
     }
 
     /**
-     * Lädt eine Datei herunter
+     * Lädt eine Datei herunter.
      */
     protected function downloadFile(string $url, string $filename): bool
     {
         try {
             $tmpFile = rex_path::cache('asset_import_' . uniqid() . '_' . $filename);
-            
+
             $ch = curl_init($url);
-            $fp = fopen($tmpFile, 'wb');
-            
-            if ($fp === false) {
-                throw new \Exception('Could not open temporary file for writing');
+            $fp = fopen($tmpFile, 'w');
+
+            if (false === $fp) {
+                throw new Exception('Could not open temporary file for writing');
             }
-            
+
             curl_setopt_array($ch, [
                 CURLOPT_FILE => $fp,
                 CURLOPT_HEADER => 0,
                 CURLOPT_FOLLOWLOCATION => true,
                 CURLOPT_TIMEOUT => 60,
                 CURLOPT_SSL_VERIFYPEER => true,
-                CURLOPT_USERAGENT => 'REDAXO Asset Import'
+                CURLOPT_USERAGENT => 'REDAXO Asset Import',
             ]);
-            
+
             $success = curl_exec($ch);
-            
+
             if (curl_errno($ch)) {
-                throw new \Exception(curl_error($ch));
+                throw new Exception(curl_error($ch));
             }
-            
+
             $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-            if ($httpCode !== 200) {
-                throw new \Exception('HTTP error: ' . $httpCode);
+            if (200 !== $httpCode) {
+                throw new Exception('HTTP error: ' . $httpCode);
             }
-            
+
             curl_close($ch);
             fclose($fp);
-            
+
             if ($success) {
                 // Prüfe Dateigröße
                 $fileSize = filesize($tmpFile);
-                if ($fileSize === 0) {
-                    throw new \Exception('Downloaded file is empty');
+                if (0 === $fileSize) {
+                    throw new Exception('Downloaded file is empty');
                 }
-                
+
                 // Prüfe Dateiformat
                 $mimeType = mime_content_type($tmpFile);
                 if (!$this->isAllowedMimeType($mimeType)) {
-                    throw new \Exception('Invalid file type: ' . $mimeType);
+                    throw new Exception('Invalid file type: ' . $mimeType);
                 }
-                
+
                 $media = [
                     'title' => pathinfo($filename, PATHINFO_FILENAME),
                     'file' => [
                         'name' => $filename,
                         'path' => $tmpFile,
-                        'tmp_name' => $tmpFile
+                        'tmp_name' => $tmpFile,
                     ],
-                    'category_id' => \rex_post('category_id', 'int', 0)
+                    'category_id' => rex_post('category_id', 'int', 0),
                 ];
-                
-                $result = \rex_media_service::addMedia($media, true);
-                
+
+                $result = rex_media_service::addMedia($media, true);
+
                 // Lösche temporäre Datei
                 if (file_exists($tmpFile)) {
                     unlink($tmpFile);
                 }
-                
-                return $result !== false;
+
+                return false !== $result;
             }
-            
+
             return false;
-            
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             rex_logger::logException($e);
             if (file_exists($tmpFile)) {
                 unlink($tmpFile);
@@ -260,7 +276,7 @@ abstract class AbstractProvider implements ProviderInterface
     }
 
     /**
-     * Prüft, ob der MIME-Type erlaubt ist
+     * Prüft, ob der MIME-Type erlaubt ist.
      */
     protected function isAllowedMimeType(string $mimeType): bool
     {
@@ -274,19 +290,19 @@ abstract class AbstractProvider implements ProviderInterface
             // Videos
             'video/mp4',
             'video/webm',
-            'video/ogg'
+            'video/ogg',
         ];
-        
+
         return in_array($mimeType, $allowedTypes);
     }
 
     /**
-     * Import-Methode mit Copyright-Unterstützung
+     * Import-Methode mit Copyright-Unterstützung.
      */
     abstract public function import(string $url, string $filename, ?string $copyright = null): bool;
 
     /**
-     * Gibt die Cache-Lebensdauer zurück
+     * Gibt die Cache-Lebensdauer zurück.
      */
     protected function getCacheLifetime(): int
     {

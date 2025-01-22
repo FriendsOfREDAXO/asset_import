@@ -1,34 +1,35 @@
 <?php
+
 namespace FriendsOfRedaxo\AssetImport\Provider;
 
 /**
- * Interface für Asset Import Provider
+ * Interface für Asset Import Provider.
  */
 interface ProviderInterface
 {
     /**
-     * Gibt den eindeutigen Provider-Namen zurück
+     * Gibt den eindeutigen Provider-Namen zurück.
      */
     public function getName(): string;
 
     /**
-     * Gibt den Anzeigenamen des Providers zurück
+     * Gibt den Anzeigenamen des Providers zurück.
      */
     public function getTitle(): string;
 
     /**
-     * Gibt das FontAwesome-Icon des Providers zurück
+     * Gibt das FontAwesome-Icon des Providers zurück.
      */
     public function getIcon(): string;
 
     /**
-     * Prüft, ob der Provider konfiguriert ist
+     * Prüft, ob der Provider konfiguriert ist.
      */
     public function isConfigured(): bool;
 
     /**
-     * Gibt die Konfigurationsfelder des Providers zurück
-     * 
+     * Gibt die Konfigurationsfelder des Providers zurück.
+     *
      * @return array Array von Konfigurationsfeldern mit folgender Struktur:
      * [
      *   'label' => string,        // Übersetzungsschlüssel für Label
@@ -41,12 +42,12 @@ interface ProviderInterface
     public function getConfigFields(): array;
 
     /**
-     * Sucht Assets anhand der übergebenen Parameter
-     * 
+     * Sucht Assets anhand der übergebenen Parameter.
+     *
      * @param string $query   Suchanfrage oder Asset-URL
      * @param int    $page    Aktuelle Seite
      * @param array  $options Zusätzliche Suchoptionen
-     * 
+     *
      * @return array Array mit folgender Struktur:
      * [
      *   'items' => [
@@ -73,19 +74,19 @@ interface ProviderInterface
     public function search(string $query, int $page = 1, array $options = []): array;
 
     /**
-     * Importiert ein Asset in den Medienpool
-     * 
+     * Importiert ein Asset in den Medienpool.
+     *
      * @param string      $url       Download-URL des Assets
      * @param string      $filename  Zieldateiname
      * @param string|null $copyright Optional: Copyright-Information
-     * 
+     *
      * @return bool True bei erfolgreichem Import, sonst false
      */
     public function import(string $url, string $filename, ?string $copyright = null): bool;
 
     /**
-     * Gibt die Standard-Suchoptionen des Providers zurück
-     * 
+     * Gibt die Standard-Suchoptionen des Providers zurück.
+     *
      * @return array Array von Standard-Optionen
      */
     public function getDefaultOptions(): array;
