@@ -43,14 +43,14 @@ class AssetImporter
         }
 
         self::$providers[$provider->getName()] = $class;
-
+        /* 
         // Log erfolgreiche Provider-Registrierung
         if (class_exists('\rex_logger')) {
-            rex_logger::factory()->log(LogLevel::INFO,
+          rex_logger::factory()->log(LogLevel::INFO,
                 'Provider registered successfully',
                 ['provider' => $provider->getName(), 'class' => $class],
-            );
-        }
+            ); 
+        }*/
     }
 
     /**
