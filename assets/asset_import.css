@@ -160,10 +160,20 @@
 #asset-import-status {
     padding: 15px;
     margin: 20px 0;
-    border-radius: 12px;
-    position: fixed; 
-    top: 20px;
-    z-index: 1000; 
+    border-radius: 20px;
+    position: fixed; /* Beibehalten */
+    
+    /* Zentrierung */
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+   
+    z-index: 1000;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); /* Box-Shadow hinzugefügt */
+    min-width: 300px; /* Minimum Width für den Inhalt*/
+    max-width: 80%;   /* Maximale Breite, um bei kleinen Bildschirmen nicht über den Rand zu gehen */
+    text-align: center; /* Falls Inhalt zentriert sein soll */
+    
 }
 
 .progress {
