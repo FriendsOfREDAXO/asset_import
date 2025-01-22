@@ -1,0 +1,3 @@
+vendor/ export-ignore
+.php-cs-fixer.dist.php export-ignore
+composer.json export-ignore
