@@ -50,6 +50,10 @@ abstract class AbstractProvider implements ProviderInterface
     {
         try {
             $cacheKey = $this->buildCacheKey($query, $page, $options);
+            
+            // Füge die aktuelle Copyright-Einstellung zum Cache-Key hinzu
+            $cacheKey .= '_' . ($this->config['copyright_fields'] ?? 'default');
+            
             $cachedResult = $this->getCachedResponse($cacheKey);
 
             if ($cachedResult !== null) {
@@ -86,7 +90,8 @@ abstract class AbstractProvider implements ProviderInterface
             'query' => $query,
             'page' => $page,
             'options' => $options,
-            'lang' => \rex::getUser()->getLanguage()
+            'lang' => \rex::getUser()->getLanguage(),
+            'copyright_fields' => $this->config['copyright_fields'] ?? 'default' // Wichtig: Copyright-Einstellung mit in Cache-Key
         ];
         
         return md5(serialize($data));
