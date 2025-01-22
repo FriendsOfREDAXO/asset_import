@@ -71,37 +71,43 @@ class PixabayProvider extends AbstractProvider
                 return $this->handlePixabayUrl($query);
             }
 
-            $type = $options['type'] ?? 'image';
-            $results = [];
-            $totalHits = 0;
+            $type = $options['type'] ?? 'all';
+            $results = ['items' => [], 'total' => 0];
+            
+            // Setze itemsPerPage basierend auf dem Typ
+            $currentItemsPerPage = ($type === 'all') ? 
+                intval($this->itemsPerPage / 2) : 
+                $this->itemsPerPage;
 
             if ($type === 'all' || $type === 'image') {
-                $imageResults = $this->searchImages($query, $page, $type);
-                $results = $imageResults['items'] ?? [];
-                $totalHits = $imageResults['total'] ?? 0;
+                $imageResults = $this->searchImages($query, $page, $currentItemsPerPage);
+                $results['items'] = array_merge($results['items'], $imageResults['items'] ?? []);
+                $results['total'] += $imageResults['total'] ?? 0;
             }
 
             if ($type === 'all' || $type === 'video') {
-                $videoResults = $this->searchVideos($query, $page, $type);
-                
-                if ($type === 'all' && !empty($videoResults['items'])) {
-                    $results = array_merge($results, $videoResults['items']);
-                    $totalHits = intval(($totalHits + ($videoResults['total'] ?? 0)) / 2);
-                } elseif ($type === 'video') {
-                    $results = $videoResults['items'] ?? [];
-                    $totalHits = $videoResults['total'] ?? 0;
+                $videoResults = $this->searchVideos($query, $page, $currentItemsPerPage);
+                $results['items'] = array_merge($results['items'], $videoResults['items'] ?? []);
+                if ($type === 'video') {
+                    $results['total'] = $videoResults['total'] ?? 0;
+                } else {
+                    $results['total'] = intval(($results['total'] + ($videoResults['total'] ?? 0)) / 2);
                 }
             }
 
-            // Entferne Duplikate und beschränke Ergebnisse
-            $results = array_values(array_unique($results, SORT_REGULAR));
-            $results = array_slice($results, 0, $this->itemsPerPage);
+            // Sortiere und begrenze Ergebnisse
+            if ($type === 'all') {
+                usort($results['items'], function($a, $b) {
+                    return $b['id'] - $a['id'];
+                });
+                $results['items'] = array_slice($results['items'], 0, $this->itemsPerPage);
+            }
 
             return [
-                'items' => $results,
-                'total' => $totalHits,
+                'items' => $results['items'],
+                'total' => $results['total'],
                 'page' => $page,
-                'total_pages' => ceil($totalHits / $this->itemsPerPage)
+                'total_pages' => ceil($results['total'] / $this->itemsPerPage)
             ];
 
         } catch (\Exception $e) {
@@ -110,13 +116,13 @@ class PixabayProvider extends AbstractProvider
         }
     }
 
-    protected function searchImages(string $query, int $page, string $type): array
+    protected function searchImages(string $query, int $page, int $perPage): array
     {
         $params = [
             'key' => $this->config['apikey'],
             'q' => $query,
             'page' => $page,
-            'per_page' => $type === 'all' ? intval($this->itemsPerPage / 2) : $this->itemsPerPage,
+            'per_page' => $perPage,
             'safesearch' => 'true',
             'lang' => \rex::getUser()->getLanguage(),
             'image_type' => 'all',
@@ -126,6 +132,10 @@ class PixabayProvider extends AbstractProvider
         $response = $this->makeApiRequest($this->apiUrl, $params);
         
         if (!$response || !isset($response['hits'])) {
+            \rex_logger::factory()->log(LogLevel::WARNING, 'No image results from Pixabay API', [
+                'query' => $query,
+                'page' => $page
+            ]);
             return ['items' => [], 'total' => 0];
         }
 
@@ -138,13 +148,13 @@ class PixabayProvider extends AbstractProvider
         ];
     }
 
-    protected function searchVideos(string $query, int $page, string $type): array
+    protected function searchVideos(string $query, int $page, int $perPage): array
     {
         $params = [
             'key' => $this->config['apikey'],
             'q' => $query,
             'page' => $page,
-            'per_page' => $type === 'all' ? intval($this->itemsPerPage / 2) : $this->itemsPerPage,
+            'per_page' => $perPage,
             'safesearch' => 'true',
             'lang' => \rex::getUser()->getLanguage()
         ];
@@ -152,6 +162,10 @@ class PixabayProvider extends AbstractProvider
         $response = $this->makeApiRequest($this->apiUrlVideos, $params);
         
         if (!$response || !isset($response['hits'])) {
+            \rex_logger::factory()->log(LogLevel::WARNING, 'No video results from Pixabay API', [
+                'query' => $query,
+                'page' => $page
+            ]);
             return ['items' => [], 'total' => 0];
         }
 
@@ -166,12 +180,21 @@ class PixabayProvider extends AbstractProvider
 
     protected function formatItem(array $item, string $type): array
     {
+        // Log item for debugging
+        \rex_logger::factory()->log(LogLevel::DEBUG, 'Formatting Pixabay item', [
+            'type' => $type,
+            'item_id' => $item['id'],
+            'copyright_fields' => $this->config['copyright_fields'] ?? 'default'
+        ]);
+
         $copyright = $this->formatCopyright($item);
 
         if ($type === 'video') {
             return [
                 'id' => $item['id'],
-                'preview_url' => !empty($item['picture_id']) ? "https://i.vimeocdn.com/video/{$item['picture_id']}_640x360.jpg" : ($item['userImageURL'] ?? $item['previewURL'] ?? ''),
+                'preview_url' => !empty($item['picture_id']) 
+                    ? "https://i.vimeocdn.com/video/{$item['picture_id']}_640x360.jpg" 
+                    : ($item['userImageURL'] ?? $item['previewURL'] ?? ''),
                 'title' => $this->formatTitle($item),
                 'author' => $item['user'] ?? '',
                 'copyright' => $copyright,
@@ -200,13 +223,11 @@ class PixabayProvider extends AbstractProvider
     {
         $title = '';
 
-        // Versuche zuerst, einen sprechenden Titel aus den Tags zu generieren
         if (!empty($item['tags'])) {
             $tags = explode(',', $item['tags']);
             $title = trim($tags[0]);
         }
 
-        // Fallback auf ID und Typ
         if (empty($title)) {
             $type = isset($item['videos']) ? 'Video' : 'Image';
             $title = $type . ' ' . $item['id'];
@@ -217,6 +238,13 @@ class PixabayProvider extends AbstractProvider
 
     protected function formatCopyright(array $item): string
     {
+        // Log copyright formatting
+        \rex_logger::factory()->log(LogLevel::DEBUG, 'Formatting copyright', [
+            'item_id' => $item['id'],
+            'copyright_fields' => $this->config['copyright_fields'] ?? 'default',
+            'user' => $item['user'] ?? 'unknown'
+        ]);
+
         $copyrightFields = $this->config['copyright_fields'] ?? 'user_pixabay';
         $parts = [];
 
@@ -238,7 +266,14 @@ class PixabayProvider extends AbstractProvider
                 break;
         }
 
-        return implode(' / ', array_filter($parts));
+        $copyright = implode(' / ', array_filter($parts));
+        
+        // Log final copyright string
+        \rex_logger::factory()->log(LogLevel::DEBUG, 'Generated copyright string', [
+            'copyright' => $copyright
+        ]);
+
+        return $copyright;
     }
 
     protected function formatVideoSizes(array $item): array
@@ -251,10 +286,8 @@ class PixabayProvider extends AbstractProvider
         ];
         
         if (!empty($item['videos'])) {
-            // Finde die beste verfügbare Qualität als Fallback
             $fallbackUrl = '';
             
-            // Definiere Qualitätsstufen und ihre Zuordnung
             $qualityMap = [
                 'large' => ['large', 'medium'],
                 'medium' => ['medium', 'large', 'small'],
@@ -270,7 +303,6 @@ class PixabayProvider extends AbstractProvider
                 }
             }
             
-            // Setze die URLs für jede Größe
             foreach ($qualityMap as $targetSize => $possibleSources) {
                 foreach ($possibleSources as $source) {
                     if (!empty($item['videos'][$source]['url'])) {
@@ -278,7 +310,6 @@ class PixabayProvider extends AbstractProvider
                         break;
                     }
                 }
-                // Wenn keine passende Größe gefunden wurde, nutze den Fallback
                 if (empty($sizes[$targetSize]['url']) && $fallbackUrl) {
                     $sizes[$targetSize]['url'] = $fallbackUrl;
                 }
@@ -288,43 +319,50 @@ class PixabayProvider extends AbstractProvider
         return $sizes;
     }
 
-    public function import(string $url, string $filename, ?string $copyright = null): bool
-    {
-        if (!$this->isConfigured()) {
-            throw new \rex_exception('Pixabay API key not configured');
-        }
-
-        try {
-            $filename = $this->sanitizeFilename($filename);
-            $extension = pathinfo(parse_url($url, PHP_URL_PATH), PATHINFO_EXTENSION);
-
-            if (!$extension) {
-                $extension = strpos($url, 'vimeocdn.com') !== false ? 'mp4' : 'jpg';
-            }
-            
-            $filename = $filename . '.' . $extension;
-
-            if ($this->downloadFile($url, $filename)) {
-                if ($copyright) {
-                    $media = rex_media::get($filename);
-                    if ($media) {
-                        $sql = \rex_sql::factory();
-                        $sql->setTable(\rex::getTable('media'));
-                        $sql->setWhere(['filename' => $filename]);
-                        $sql->setValue('med_copyright', $copyright);
-                        $sql->update();
-                    }
-                }
-                return true;
-            }
-
-            return false;
-
-        } catch (\Exception $e) {
-            \rex_logger::factory()->log(LogLevel::ERROR, 'Import error: ' . $e->getMessage(), [], __FILE__, __LINE__);
-            return false;
-        }
+  public function import(string $url, string $filename, ?string $copyright = null): bool
+  {
+    if (!$this->isConfigured()) {
+        throw new \rex_exception('Pixabay API key not configured');
     }
+
+    try {
+        $filename = $this->sanitizeFilename($filename);
+        $extension = pathinfo(parse_url($url, PHP_URL_PATH), PATHINFO_EXTENSION);
+
+        if (!$extension) {
+            $extension = strpos($url, 'vimeocdn.com') !== false ? 'mp4' : 'jpg';
+        }
+        
+        $filename = $filename . '.' . $extension;
+
+        // Prüfe ob die Datei bereits existiert
+        if (\rex_media::get($filename)) {
+            throw new \rex_exception(
+                \rex_i18n::msg('asset_import_file_exists', $filename)
+            );
+        }
+
+        if ($this->downloadFile($url, $filename)) {
+            if ($copyright) {
+                $media = rex_media::get($filename);
+                if ($media) {
+                    $sql = \rex_sql::factory();
+                    $sql->setTable(\rex::getTable('media'));
+                    $sql->setWhere(['filename' => $filename]);
+                    $sql->setValue('med_copyright', $copyright);
+                    $sql->update();
+                }
+            }
+            return true;
+        }
+
+        return false;
+
+    } catch (\Exception $e) {
+        \rex_logger::factory()->log(LogLevel::ERROR, 'Import error: ' . $e->getMessage());
+        throw $e;
+    }
+   }
 
     protected function isPixabayUrl(string $query): bool
     {
@@ -338,11 +376,9 @@ class PixabayProvider extends AbstractProvider
             return ['items' => [], 'total' => 0, 'page' => 1, 'total_pages' => 1];
         }
 
-        // Versuche zuerst Bild
         $item = $this->getById($id, 'image');
         $type = 'image';
         
-        // Wenn nicht gefunden, versuche Video
         if (!$item) {
             $item = $this->getById($id, 'video');
             $type = 'video';
@@ -387,8 +423,6 @@ class PixabayProvider extends AbstractProvider
     {
         $url = $url . '?' . http_build_query($params, '', '&', PHP_QUERY_RFC3986);
 
-       // \rex_logger::factory()->log(LogLevel::DEBUG, 'Pixabay API request: {url}', ['url' => $url], __FILE__, __LINE__);
-
         $ch = curl_init();
         curl_setopt_array($ch, [
             CURLOPT_URL => $url,
@@ -427,7 +461,6 @@ class PixabayProvider extends AbstractProvider
 
     protected function getCacheLifetime(): int
     {
-        // 24 Stunden Cache
-        return 86400;
+        return 86400; // 24 Stunden
     }
 }

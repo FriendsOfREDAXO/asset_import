@@ -75,37 +75,51 @@ class PexelsProvider extends AbstractProvider
                 return $this->handlePexelsUrl($query);
             }
 
-            $type = $options['type'] ?? 'image';
-            $results = [];
-            $totalHits = 0;
-
-            $perPage = $this->itemsPerPage * 2;
+            $type = $options['type'] ?? 'all';
+            $results = ['items' => [], 'total' => 0];
+            
+            // Setze itemsPerPage basierend auf dem Typ
+            $currentItemsPerPage = ($type === 'all') ? 
+                intval($this->itemsPerPage / 2) : 
+                $this->itemsPerPage;
 
             if ($type === 'all' || $type === 'image') {
-                $results = $this->searchImages($query, $page, $perPage, $type);
-                $totalHits = $results['total'] ?? 0;
+                $imageResults = $this->searchImages($query, $page, $currentItemsPerPage);
+                $results['items'] = array_merge($results['items'], $imageResults['items'] ?? []);
+                $results['total'] += $imageResults['total'] ?? 0;
             }
 
             if ($type === 'all' || $type === 'video') {
-                $videoResults = $this->searchVideos($query, $page, $perPage, $type);
-                if ($type === 'all') {
-                    $results['items'] = array_merge($results['items'] ?? [], $videoResults['items'] ?? []);
-                    $totalHits = ($totalHits + ($videoResults['total'] ?? 0)) / 2;
+                $videoResults = $this->searchVideos($query, $page, $currentItemsPerPage);
+                $results['items'] = array_merge($results['items'], $videoResults['items'] ?? []);
+                if ($type === 'video') {
+                    $results['total'] = $videoResults['total'] ?? 0;
                 } else {
-                    $results = $videoResults;
-                    $totalHits = $videoResults['total'] ?? 0;
+                    $results['total'] = intval(($results['total'] + ($videoResults['total'] ?? 0)) / 2);
                 }
             }
 
-            // Entferne Duplikate und beschränke Ergebnisse
-            $results['items'] = array_values(array_unique($results['items'] ?? [], SORT_REGULAR));
-            $results['items'] = array_slice($results['items'] ?? [], 0, $perPage);
+            // Sortiere und begrenze Ergebnisse
+            if ($type === 'all') {
+                usort($results['items'], function($a, $b) {
+                    return $b['id'] - $a['id'];
+                });
+                $results['items'] = array_slice($results['items'], 0, $this->itemsPerPage);
+            }
+
+            // Log search results
+            \rex_logger::factory()->log(LogLevel::DEBUG, 'Pexels search results', [
+                'query' => $query,
+                'type' => $type,
+                'total_items' => count($results['items']),
+                'total_results' => $results['total']
+            ]);
 
             return [
-                'items' => $results['items'] ?? [],
-                'total' => $totalHits,
+                'items' => $results['items'],
+                'total' => $results['total'],
                 'page' => $page,
-                'total_pages' => max(1, ceil($totalHits / $perPage))
+                'total_pages' => ceil($results['total'] / $this->itemsPerPage)
             ];
 
         } catch (\Exception $e) {
@@ -114,7 +128,7 @@ class PexelsProvider extends AbstractProvider
         }
     }
 
-    protected function searchImages(string $query, int $page, int $perPage, string $type): array
+    protected function searchImages(string $query, int $page, int $perPage): array
     {
         $results = [];
         
@@ -124,7 +138,7 @@ class PexelsProvider extends AbstractProvider
                 [
                     'query' => $query,
                     'page' => $page,
-                    'per_page' => $type === 'all' ? intval($perPage / 2) : $perPage,
+                    'per_page' => $perPage,
                     'orientation' => 'landscape'
                 ]
             );
@@ -143,7 +157,7 @@ class PexelsProvider extends AbstractProvider
                 $this->apiUrl . 'curated',
                 [
                     'page' => $page,
-                    'per_page' => $type === 'all' ? intval($perPage / 2) : $perPage
+                    'per_page' => $perPage
                 ]
             );
 
@@ -161,11 +175,11 @@ class PexelsProvider extends AbstractProvider
         return $results;
     }
 
-    protected function searchVideos(string $query, int $page, int $perPage, string $type): array
+    protected function searchVideos(string $query, int $page, int $perPage): array
     {
         $videoParams = [
             'page' => $page,
-            'per_page' => $type === 'all' ? intval($perPage / 2) : $perPage
+            'per_page' => $perPage
         ];
 
         if (!empty($query)) {
@@ -195,6 +209,13 @@ class PexelsProvider extends AbstractProvider
 
     protected function formatItem(array $item, string $type): array
     {
+        // Log item formatting
+        \rex_logger::factory()->log(LogLevel::DEBUG, 'Formatting Pexels item', [
+            'type' => $type,
+            'item_id' => $item['id'],
+            'copyright_fields' => $this->config['copyright_fields'] ?? 'default'
+        ]);
+
         $copyright = $this->formatCopyright($item);
         
         if ($type === 'video') {
@@ -229,6 +250,13 @@ class PexelsProvider extends AbstractProvider
 
     protected function formatCopyright(array $item): string
     {
+        // Log copyright formatting
+        \rex_logger::factory()->log(LogLevel::DEBUG, 'Formatting copyright', [
+            'item_id' => $item['id'],
+            'copyright_fields' => $this->config['copyright_fields'] ?? 'default',
+            'photographer' => $item['photographer'] ?? $item['user']['name'] ?? 'unknown'
+        ]);
+
         $copyrightFields = $this->config['copyright_fields'] ?? 'photographer_pexels';
         $parts = [];
 
@@ -250,7 +278,14 @@ class PexelsProvider extends AbstractProvider
                 break;
         }
 
-        return implode(' / ', array_filter($parts));
+        $copyright = implode(' / ', array_filter($parts));
+        
+        // Log final copyright string
+        \rex_logger::factory()->log(LogLevel::DEBUG, 'Generated copyright string', [
+            'copyright' => $copyright
+        ]);
+
+        return $copyright;
     }
 
     protected function formatVideoSizes(array $item): array
@@ -296,56 +331,64 @@ class PexelsProvider extends AbstractProvider
         return $sizes;
     }
 
-    public function import(string $url, string $filename, ?string $copyright = null): bool
-    {
-        if (!$this->isConfigured()) {
-            throw new \rex_exception('Pexels API key not configured');
-        }
-
-        try {
-            $filename = $this->sanitizeFilename($filename);
-            $extension = pathinfo(parse_url($url, PHP_URL_PATH), PATHINFO_EXTENSION);
-            
-            if (!$extension) {
-                $ch = curl_init($url);
-                curl_setopt_array($ch, [
-                    CURLOPT_RETURNTRANSFER => true,
-                    CURLOPT_NOBODY => true,
-                    CURLOPT_HEADER => true
-                ]);
-                $header = curl_exec($ch);
-                curl_close($ch);
-                
-                if (preg_match('/Content-Type: image\/(\w+)/i', $header, $matches)) {
-                    $extension = $matches[1];
-                } else {
-                    $extension = 'jpg';
-                }
-            }
-            
-            $filename = $filename . '.' . $extension;
-
-            if ($this->downloadFile($url, $filename)) {
-                if ($copyright) {
-                    $media = rex_media::get($filename);
-                    if ($media) {
-                        $sql = \rex_sql::factory();
-                        $sql->setTable(\rex::getTable('media'));
-                        $sql->setWhere(['filename' => $filename]);
-                        $sql->setValue('med_copyright', $copyright);
-                        $sql->update();
-                    }
-                }
-                return true;
-            }
-            
-            return false;
-
-        } catch (\Exception $e) {
-            \rex_logger::factory()->log(LogLevel::ERROR, 'Import error: ' . $e->getMessage(), [], __FILE__, __LINE__);
-            return false;
-        }
+   public function import(string $url, string $filename, ?string $copyright = null): bool
+  {
+    if (!$this->isConfigured()) {
+        throw new \rex_exception('Pexels API key not configured');
     }
+
+    try {
+        $filename = $this->sanitizeFilename($filename);
+        $extension = pathinfo(parse_url($url, PHP_URL_PATH), PATHINFO_EXTENSION);
+        
+        if (!$extension) {
+            // Versuche Content-Type zu erhalten
+            $ch = curl_init($url);
+            curl_setopt_array($ch, [
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_NOBODY => true,
+                CURLOPT_HEADER => true
+            ]);
+            $header = curl_exec($ch);
+            curl_close($ch);
+            
+            if (preg_match('/Content-Type: image\/(\w+)/i', $header, $matches)) {
+                $extension = $matches[1];
+            } else {
+                $extension = 'jpg';
+            }
+        }
+        
+        $filename = $filename . '.' . $extension;
+
+        // Prüfe ob die Datei bereits existiert
+        if (\rex_media::get($filename)) {
+            throw new \rex_exception(
+                \rex_i18n::msg('asset_import_file_exists', $filename)
+            );
+        }
+
+        if ($this->downloadFile($url, $filename)) {
+            if ($copyright) {
+                $media = rex_media::get($filename);
+                if ($media) {
+                    $sql = \rex_sql::factory();
+                    $sql->setTable(\rex::getTable('media'));
+                    $sql->setWhere(['filename' => $filename]);
+                    $sql->setValue('med_copyright', $copyright);
+                    $sql->update();
+                }
+            }
+            return true;
+        }
+        
+        return false;
+
+    } catch (\Exception $e) {
+        \rex_logger::factory()->log(LogLevel::ERROR, 'Import error: ' . $e->getMessage());
+        throw $e;
+    }
+   }
 
     protected function isPexelsUrl(string $query): bool
     {

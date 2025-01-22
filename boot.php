@@ -79,7 +79,29 @@ if (rex::isBackend() && rex::getUser()) {
                     $page = rex_request('page', 'integer', 1);
                     $options = rex_request('options', 'array', []);
                     
+                    // Log search request
+                    \rex_logger::factory()->log(\Psr\Log\LogLevel::DEBUG, 
+                        'Processing search request', 
+                        [
+                            'provider' => $provider,
+                            'query' => $query,
+                            'page' => $page,
+                            'options' => $options
+                        ]
+                    );
+                    
                     $results = $providerInstance->search($query, $page, $options);
+                    
+                    // Log search results
+                    \rex_logger::factory()->log(\Psr\Log\LogLevel::DEBUG, 
+                        'Search request completed', 
+                        [
+                            'provider' => $provider,
+                            'total_results' => $results['total'] ?? 0,
+                            'items_count' => count($results['items'] ?? [])
+                        ]
+                    );
+                    
                     rex_response::sendJson(['success' => true, 'data' => $results]);
                     break;
                     
@@ -89,6 +111,17 @@ if (rex::isBackend() && rex::getUser()) {
                     $filename = rex_request('filename', 'string');
                     $copyright = rex_request('copyright', 'string', '');
                     
+                    // Log import request
+                    \rex_logger::factory()->log(\Psr\Log\LogLevel::INFO, 
+                        'Starting import request', 
+                        [
+                            'provider' => $provider,
+                            'url' => $url,
+                            'filename' => $filename,
+                            'copyright' => $copyright
+                        ]
+                    );
+                    
                     // Validate input
                     if (empty($url) || empty($filename)) {
                         throw new rex_exception('Invalid import parameters');
@@ -96,6 +129,31 @@ if (rex::isBackend() && rex::getUser()) {
                     
                     // Import file
                     $result = $providerInstance->import($url, $filename, $copyright);
+                    
+                    // Log import result
+                    \rex_logger::factory()->log(\Psr\Log\LogLevel::INFO, 
+                        'Import request completed', 
+                        [
+                            'provider' => $provider,
+                            'success' => $result,
+                            'filename' => $filename
+                        ]
+                    );
+                    
+                    // Verify media and copyright after import
+                    if ($result) {
+                        $media = rex_media::get($filename);
+                        if ($media) {
+                            \rex_logger::factory()->log(\Psr\Log\LogLevel::DEBUG, 
+                                'Verifying imported media', 
+                                [
+                                    'filename' => $filename,
+                                    'copyright' => $media->getValue('med_copyright'),
+                                    'expected_copyright' => $copyright
+                                ]
+                            );
+                        }
+                    }
                     
                     // Send response
                     rex_response::sendJson(['success' => $result]);
@@ -107,7 +165,15 @@ if (rex::isBackend() && rex::getUser()) {
             
         } catch (\Exception $e) {
             // Log error
-            rex_logger::logException($e);
+            \rex_logger::factory()->log(\Psr\Log\LogLevel::ERROR, 
+                'API request failed: ' . $e->getMessage(), 
+                [
+                    'provider' => $provider ?? 'unknown',
+                    'action' => $action ?? 'unknown',
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine()
+                ]
+            );
             
             // Send error response
             rex_response::sendJson([
@@ -118,42 +184,3 @@ if (rex::isBackend() && rex::getUser()) {
         exit;
     }
 }
-
-// Install event: Create necessary database tables
-rex_addon::get('asset_import')->setProperty('install', function (rex_addon $addon) {
-    // Create cache table if it doesn't exist
-    $table = rex::getTable('asset_import_cache');
-    $sql = rex_sql::factory();
-    
-    // Check if table exists
-    if (!$sql->setQuery("SHOW TABLES LIKE '$table'")->getRows()) {
-        $sql->setQuery("
-            CREATE TABLE IF NOT EXISTS $table (
-                id int(10) unsigned NOT NULL auto_increment,
-                provider varchar(191) NOT NULL,
-                cache_key varchar(32) NOT NULL,
-                response longtext NOT NULL,
-                created datetime NOT NULL,
-                valid_until datetime NOT NULL,
-                PRIMARY KEY (id),
-                KEY provider_cache (provider, cache_key)
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-        ");
-    }
-    
-    // Create default configuration if it doesn't exist
-    if (!$addon->hasConfig()) {
-        $addon->setConfig('providers', []);
-    }
-});
-
-// Uninstall event: Clean up
-rex_addon::get('asset_import')->setProperty('uninstall', function (rex_addon $addon) {
-    // Remove cache table
-    $table = rex::getTable('asset_import_cache');
-    $sql = rex_sql::factory();
-    $sql->setQuery("DROP TABLE IF EXISTS $table");
-    
-    // Remove configuration
-    $addon->removeConfig();
-});
