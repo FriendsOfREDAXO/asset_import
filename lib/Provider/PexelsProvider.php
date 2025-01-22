@@ -331,79 +331,64 @@ class PexelsProvider extends AbstractProvider
         return $sizes;
     }
 
-    public function import(string $url, string $filename, ?string $copyright = null): bool
-    {
-        if (!$this->isConfigured()) {
-            throw new \rex_exception('Pexels API key not configured');
-        }
-
-        try {
-            // Log import start
-            \rex_logger::factory()->log(LogLevel::INFO, 'Starting Pexels import', [
-                'url' => $url,
-                'filename' => $filename,
-                'copyright' => $copyright
-            ]);
-
-            $filename = $this->sanitizeFilename($filename);
-            $extension = pathinfo(parse_url($url, PHP_URL_PATH), PATHINFO_EXTENSION);
-            
-            if (!$extension) {
-                $ch = curl_init($url);
-                curl_setopt_array($ch, [
-                    CURLOPT_RETURNTRANSFER => true,
-                    CURLOPT_NOBODY => true,
-                    CURLOPT_HEADER => true
-                ]);
-                $header = curl_exec($ch);
-                curl_close($ch);
-                
-                if (preg_match('/Content-Type: image\/(\w+)/i', $header, $matches)) {
-                    $extension = $matches[1];
-                } else {
-                    $extension = 'jpg';
-                }
-            }
-            
-            $filename = $filename . '.' . $extension;
-
-            if ($this->downloadFile($url, $filename)) {
-                if ($copyright) {
-                    $media = rex_media::get($filename);
-                    if ($media) {
-                        // Log copyright setting
-                        \rex_logger::factory()->log(LogLevel::INFO, 'Setting copyright for media', [
-                            'filename' => $filename,
-                            'copyright' => $copyright
-                        ]);
-
-                        $sql = \rex_sql::factory();
-                        $sql->setTable(\rex::getTable('media'));
-                        $sql->setWhere(['filename' => $filename]);
-                        $sql->setValue('med_copyright', $copyright);
-                        $sql->update();
-
-                        // Verify copyright was set
-                        $updatedMedia = rex_media::get($filename);
-                        if ($updatedMedia && $updatedMedia->getValue('med_copyright') !== $copyright) {
-                            \rex_logger::factory()->log(LogLevel::WARNING, 'Copyright not set correctly', [
-                                'filename' => $filename,
-                                'expected' => $copyright,
-                                'actual' => $updatedMedia->getValue('med_copyright')
-                            ]);
-                        }
-                    }
-                }
-                return true;
-            }
-            
-            return false;
-
-        } catch (\Exception $e) {
-            \rex_logger::factory()->log(LogLevel::ERROR, 'Import error: ' . $e->getMessage(), [], __FILE__, __LINE__);
-            return false;
-        }
+   public function import(string $url, string $filename, ?string $copyright = null): bool
+  {
+    if (!$this->isConfigured()) {
+        throw new \rex_exception('Pexels API key not configured');
     }
+
+    try {
+        $filename = $this->sanitizeFilename($filename);
+        $extension = pathinfo(parse_url($url, PHP_URL_PATH), PATHINFO_EXTENSION);
+        
+        if (!$extension) {
+            // Versuche Content-Type zu erhalten
+            $ch = curl_init($url);
+            curl_setopt_array($ch, [
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_NOBODY => true,
+                CURLOPT_HEADER => true
+            ]);
+            $header = curl_exec($ch);
+            curl_close($ch);
+            
+            if (preg_match('/Content-Type: image\/(\w+)/i', $header, $matches)) {
+                $extension = $matches[1];
+            } else {
+                $extension = 'jpg';
+            }
+        }
+        
+        $filename = $filename . '.' . $extension;
+
+        // Prüfe ob die Datei bereits existiert
+        if (\rex_media::get($filename)) {
+            throw new \rex_exception(
+                \rex_i18n::msg('asset_import_file_exists', $filename)
+            );
+        }
+
+        if ($this->downloadFile($url, $filename)) {
+            if ($copyright) {
+                $media = rex_media::get($filename);
+                if ($media) {
+                    $sql = \rex_sql::factory();
+                    $sql->setTable(\rex::getTable('media'));
+                    $sql->setWhere(['filename' => $filename]);
+                    $sql->setValue('med_copyright', $copyright);
+                    $sql->update();
+                }
+            }
+            return true;
+        }
+        
+        return false;
+
+    } catch (\Exception $e) {
+        \rex_logger::factory()->log(LogLevel::ERROR, 'Import error: ' . $e->getMessage());
+        throw $e;
+    }
+   }
 
     protected function isPexelsUrl(string $query): bool
     {
