@@ -1,4 +1,5 @@
 <?php
+
 try {
     // Hole Medientabelle
     $mediaTable = rex_sql_table::get(rex::getTable('media'));
