@@ -22,7 +22,7 @@ $table
 // Erstelle oder aktualisiere die Tabelle
 $table->ensure();
 
-<?php
+
 
 try {
     // Hole Medientabelle
