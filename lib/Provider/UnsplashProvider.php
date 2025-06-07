@@ -5,14 +5,26 @@ namespace FriendsOfRedaxo\AssetImport\Provider;
 use Exception;
 use FriendsOfRedaxo\AssetImport\Asset\AbstractProvider;
 use Psr\Log\LogLevel;
-use rex_media;
 use rex;
-use rex_sql;
 use rex_exception;
-use rex_logger;
-use rex_path;
 use rex_i18n;
+use rex_logger;
+use rex_media;
 use rex_media_service;
+use rex_path;
+use rex_sql;
+
+use function count;
+
+use const CURLINFO_HTTP_CODE;
+use const CURLOPT_HTTPHEADER;
+use const CURLOPT_RETURNTRANSFER;
+use const CURLOPT_SSL_VERIFYPEER;
+use const CURLOPT_TIMEOUT;
+use const CURLOPT_URL;
+use const PATHINFO_EXTENSION;
+use const PATHINFO_FILENAME;
+use const PHP_URL_PATH;
 
 class UnsplashProvider extends AbstractProvider
 {
@@ -101,7 +113,7 @@ class UnsplashProvider extends AbstractProvider
 
         $results = ['items' => [], 'total' => 0];
         if ($response && isset($response['results'])) {
-            $results['items'] = array_map(fn($item) => $this->formatItem($item), $response['results']);
+            $results['items'] = array_map(fn ($item) => $this->formatItem($item), $response['results']);
             $results['total'] = $response['total'] ?? count($response['results']);
         }
 
