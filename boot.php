@@ -5,6 +5,7 @@ namespace FriendsOfRedaxo\AssetImport;
 use Exception;
 use FriendsOfRedaxo\AssetImport\Provider\PexelsProvider;
 use FriendsOfRedaxo\AssetImport\Provider\PixabayProvider;
+use FriendsOfRedaxo\AssetImport\Provider\UnsplashProvider;
 use Psr\Log\LogLevel;
 use rex;
 use rex_addon;
@@ -31,6 +32,7 @@ if (rex::isBackend() && rex::getUser()) {
     // Register default providers
     AssetImporter::registerProvider(PixabayProvider::class);
     AssetImporter::registerProvider(PexelsProvider::class);
+    AssetImporter::registerProvider(UnsplashProvider::class);
 
     // Register assets for the asset_import pages
     if ('asset_import/main' === rex_be_controller::getCurrentPage()
