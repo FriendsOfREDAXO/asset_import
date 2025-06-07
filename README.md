@@ -1,6 +1,6 @@
 # Asset Import für REDAXO
 
-Ein AddOn zum Importieren von Medien aus verschiedenen Quellen (Pixabay, Pexels etc.) direkt in den REDAXO Medienpool.
+Ein AddOn zum Importieren von Medien aus verschiedenen Quellen (Pixabay, Pexels, Unsplash etc.) direkt in den REDAXO Medienpool.
 
 ![Screenshot](https://github.com/FriendsOfREDAXO/asset_import/blob/assets/screen.png?raw=true)
 
@@ -28,7 +28,7 @@ Provider können in der boot.php eines anderen AddOns registriert werden:
 // Provider-Klasse implementieren
 namespace MyAddon\Provider;
 
-class MyProvider extends \FriendsOfRedaxo\AssetImport\Asset\AbstractProvider 
+class MyProvider extends \FriendsOfRedaxo\AssetImport\Asset\AbstractProvider
 {
     // Provider Implementation
 }
@@ -90,44 +90,44 @@ use rex_url;
 
 class FtpUploadProvider extends AbstractProvider
 {
-    public function getName(): string 
+    public function getName(): string
     {
         return 'ftpupload';
     }
 
-    public function getTitle(): string 
+    public function getTitle(): string
     {
         return 'FTP Upload';
     }
 
-    public function getIcon(): string 
+    public function getIcon(): string
     {
         return 'fa-upload';
     }
 
-    public function isConfigured(): bool 
+    public function isConfigured(): bool
     {
         return true;
     }
 
-    public function getConfigFields(): array 
+    public function getConfigFields(): array
     {
         return [];
     }
 
-    public function getDefaultOptions(): array 
+    public function getDefaultOptions(): array
     {
         return [
             'type' => 'image'
         ];
     }
 
-    protected function searchApi(string $query, int $page = 1, array $options = []): array 
+    protected function searchApi(string $query, int $page = 1, array $options = []): array
     {
         $items = [];
         $type = $options['type'] ?? 'image';
         $uploadPath = rex_path::base('ftpupload');
-        
+
         if (is_dir($uploadPath)) {
             $files = new \RecursiveIteratorIterator(
                 new \RecursiveDirectoryIterator($uploadPath, \RecursiveDirectoryIterator::SKIP_DOTS),
@@ -137,14 +137,14 @@ class FtpUploadProvider extends AbstractProvider
             foreach ($files as $file) {
                 if ($file->isFile()) {
                     $fileType = $this->getFileType($file->getFilename());
-                    
+
                     // Nur Bilder und Videos berücksichtigen
                     if ($fileType && ($type === 'all' || $type === $fileType)) {
                         if (empty($query) || stripos($file->getFilename(), $query) !== false) {
                             $relativePath = str_replace($uploadPath, '', $file->getPathname());
                             $relativePath = ltrim($relativePath, '/\\');
                             $filename = $file->getFilename();
-                            
+
                             $items[] = [
                                 'id' => md5($relativePath),
                                 'preview_url' => rex_url::base('ftpupload/' . $relativePath),
@@ -183,21 +183,21 @@ class FtpUploadProvider extends AbstractProvider
         ];
     }
 
-    private function getFileType(string $filename): ?string 
+    private function getFileType(string $filename): ?string
     {
         $ext = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
-        
+
         $types = [
             'image' => ['jpg', 'jpeg', 'png', 'gif', 'webp'],
             'video' => ['mp4', 'webm']
         ];
-        
+
         foreach ($types as $type => $extensions) {
             if (in_array($ext, $extensions)) {
                 return $type;
             }
         }
-        
+
         return null;
     }
 }
@@ -389,4 +389,4 @@ MIT Lizenz, siehe [LICENSE](LICENSE)
 
 **Project Lead**
 
-[Thomas Skerbis](https://github.com/skerbis)  
+[Thomas Skerbis](https://github.com/skerbis)

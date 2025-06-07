@@ -43,6 +43,12 @@ asset_import_provider_pexels_apikey_notice = API key from Pexels.com |  https://
 asset_import_provider_pexels_copyright_format = Copyright Format
 asset_import_provider_pexels_copyright_format_notice = Choose the format for copyright information
 
+# Unsplash Provider
+asset_import_provider_unsplash_apikey = Unsplash API key
+asset_import_provider_unsplash_apikey_notice = API key from api.unsplash.com |  https://api.unsplash.com
+asset_import_provider_unsplash_copyright_format = Copyright Format
+asset_import_provider_unsplash_copyright_format_notice = Choose the format for copyright information
+
 # Copyright Formats
 asset_import_copyright_format_extended = Extended (Author, License & Source)
 asset_import_copyright_format_simple = Simple (Source only)
