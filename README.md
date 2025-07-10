@@ -20,6 +20,16 @@ Ein AddOn zum Importieren von Medien aus verschiedenen Quellen (Pixabay, Pexels 
 2. Installation durchführen
 3. Provider konfigurieren unter "Asset Import > Einstellungen"
 
+## Berechtigungen
+
+Das AddOn bringt eine eigene Berechtigung mit:
+
+- **`asset_import[]`** - Berechtigt zum Zugriff auf das gesamte Asset Import AddOn
+
+Diese Berechtigung kann in der Benutzerverwaltung (System > Benutzer) einzelnen Benutzern oder Rollen zugewiesen werden. Ohne diese Berechtigung ist das AddOn für den Benutzer nicht sichtbar.
+
+Die Einstellungsseite erfordert zusätzlich Administratorrechte (`admin[]`).
+
 ## Provider registrieren
 
 Provider können in der boot.php eines anderen AddOns registriert werden:
