@@ -2,6 +2,9 @@ asset_import_title = Asset Import
 asset_import_media = Media
 asset_import_settings = Settings
 
+# Permissions
+perm_general_asset_import[] = Asset Import
+
 asset_import_search = Search
 asset_import_search_placeholder = Enter search term...
 asset_import_type = Type
