@@ -15,12 +15,12 @@ if (rex_request('direct_import_api', 'int', 0)) {
     $user = rex::getUser();
     if (!$user || !$user->hasPerm('asset_import[direct]')) {
         rex_response::sendJson([
-            'success' => false, 
-            'error' => 'Keine Berechtigung für Direct URL Import'
+            'success' => false,
+            'error' => 'Keine Berechtigung für Direct URL Import',
         ]);
         exit;
     }
-    
+
     try {
         $action = rex_request('action', 'string', '');
 
