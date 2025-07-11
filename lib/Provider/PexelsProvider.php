@@ -129,14 +129,6 @@ class PexelsProvider extends AbstractProvider
                 $results['items'] = array_slice($results['items'], 0, $this->itemsPerPage);
             }
 
-            // Log search results
-            rex_logger::factory()->log(LogLevel::DEBUG, 'Pexels search results', [
-                'query' => $query,
-                'type' => $type,
-                'total_items' => count($results['items']),
-                'total_results' => $results['total'],
-            ]);
-
             return [
                 'items' => $results['items'],
                 'total' => $results['total'],
@@ -230,13 +222,6 @@ class PexelsProvider extends AbstractProvider
 
     protected function formatItem(array $item, string $type): array
     {
-        // Log item formatting
-        rex_logger::factory()->log(LogLevel::DEBUG, 'Formatting Pexels item', [
-            'type' => $type,
-            'item_id' => $item['id'],
-            'copyright_fields' => $this->config['copyright_fields'] ?? 'default',
-        ]);
-
         $copyright = $this->formatCopyright($item);
 
         if ('video' === $type) {
@@ -272,12 +257,6 @@ class PexelsProvider extends AbstractProvider
     protected function formatCopyright(array $item): string
     {
         // Log copyright formatting
-        rex_logger::factory()->log(LogLevel::DEBUG, 'Formatting copyright', [
-            'item_id' => $item['id'],
-            'copyright_fields' => $this->config['copyright_fields'] ?? 'default',
-            'photographer' => $item['photographer'] ?? $item['user']['name'] ?? 'unknown',
-        ]);
-
         $copyrightFields = $this->config['copyright_fields'] ?? 'photographer_pexels';
         $parts = [];
 
