@@ -7,18 +7,121 @@ Ein AddOn zum Importieren von Medien aus verschiedenen Quellen (Pixabay, Pexels 
 ## Features
 
 - Bildsuche über verschiedene Provider
-- Video-Suche (abhängig vom Provider)
-- Vorschau der Assets
+- Direkte Suche in **Wikimedia Commons** (Wikipedia Medien)
+- Vorschau der Assets mit Metadaten
 - Direkter Import in den Medienpool
+- **Copyright-Informationen** automatisch übernehmen
 - Kategoriezuweisung
 - 24h API-Cache für bessere Performance
 - Erweiterbar durch weitere Provider
+
+## Verfügbare Provider
+
+### Pixabay
+- Kostenlose Stock-Fotos und -Videos
+- API-Key erforderlich
+- Kommerzielle Nutzung möglich
+
+### Pexels
+- Hochqualitative Stock-Fotos
+- API-Key erforderlich
+- Alle Bilder kostenlos nutzbar
+
+### **Wikimedia Commons** ⭐ **NEU**
+- Freie Medien der Wikipedia-Projekte
+- **Keine API-Key erforderlich**
+- Millionen von freien Bildern, SVGs und Dokumenten
+- Automatische Copyright- und Lizenz-Übernahme
+- Unterstützt JPG, PNG, SVG, WebP und PDF
 
 ## Installation
 
 1. Im REDAXO Installer das AddOn `asset_import` herunterladen
 2. Installation durchführen
 3. Provider konfigurieren unter "Asset Import > Einstellungen"
+
+## Konfiguration
+
+### Wikimedia Commons (empfohlen)
+
+**Wikimedia Commons** ist sofort einsatzbereit - kein API-Key erforderlich!
+
+1. **Gehe zu:** Asset Import > Einstellungen > Wikimedia Commons
+2. **Konfiguriere:**
+   - **User-Agent:** `DeineWebsite.de Import/1.0 (deine@email.de)`
+   - **Copyright-Felder:** Wähle das gewünschte Format:
+     - `Author + Wikimedia Commons` → "Max Mustermann / Wikimedia Commons"
+     - `Only Author` → "Max Mustermann"
+     - `License Info` → "CC BY-SA 4.0"
+   - **Copyright-Info setzen:** `Ja` (für automatische Copyright-Übernahme)
+   - **Dateitypen:** `Images only` oder `All file types`
+3. **Speichere die Einstellungen**
+4. **Fertig!** Du kannst sofort loslegen
+
+## Quick-Start: Erstes Bild importieren
+
+### Mit Wikimedia Commons (empfohlen für Einsteiger)
+
+1. **Gehe zu:** AddOns > Asset Import
+2. **Wähle:** Wikimedia Commons
+3. **Suche nach:** `cat` oder `Berlin`
+4. **Klicke auf:** "Importieren" bei einem Bild deiner Wahl
+5. **Prüfe:** Medienpool - dein Bild ist da mit Copyright-Info! 🎉
+
+Das wars! Kein API-Key, keine komplizierte Einrichtung.
+
+### Mit Pixabay/Pexels
+
+1. **Erstelle API-Key** (siehe Links oben)
+2. **Gehe zu:** Asset Import > Einstellungen > Pixabay/Pexels  
+3. **Trage API-Key ein** und speichere
+4. **Gehe zu:** Asset Import und wähle den Provider
+5. **Suche und importiere** wie bei Wikimedia
+
+## FAQ
+
+### Warum Wikimedia Commons wählen?
+
+- ✅ **Kostenlos:** Keine API-Limits oder Kosten
+- ✅ **Rechtssicher:** Alle Medien sind frei nutzbar
+- ✅ **Vielfältig:** Millionen professioneller Bilder und Grafiken
+- ✅ **Qualität:** Oft bessere Qualität als Stock-Foto-Seiten
+- ✅ **Einzigartig:** Historische und wissenschaftliche Inhalte
+
+### Was bedeuten die Copyright-Optionen?
+
+- **Author + Wikimedia Commons:** `"Max Mustermann / Wikimedia Commons"`
+- **Only Author:** `"Max Mustermann"`
+- **Only Wikimedia Commons:** `"Wikimedia Commons"`  
+- **License Info:** `"CC BY-SA 4.0"`
+
+### Welche Dateiformate werden unterstützt?
+
+**Wikimedia Commons:**
+- **Bilder:** JPG, PNG, SVG, WebP
+- **Dokumente:** PDF
+
+**Pixabay/Pexels:**
+- **Bilder:** JPG, PNG, WebP
+- **Videos:** MP4, WebM (je nach Provider)
+
+### Wo finde ich die Copyright-Informationen?
+
+Nach dem Import findest du die Copyright-Informationen im **Medienpool**:
+1. **Gehe zu:** Medienpool
+2. **Klicke** auf dein importiertes Bild
+3. **Schaue** ins Feld "**Copyright**" (nicht Beschreibung!)
+
+### Kann ich auch Videos importieren?
+
+- **Wikimedia Commons:** Nein, nur Bilder und PDFs
+- **Pixabay/Pexels:** Ja, Videos werden unterstützt
+
+### Pixabay & Pexels
+
+Für Pixabay und Pexels benötigst du einen kostenlosen API-Key:
+- [Pixabay API-Key erstellen](https://pixabay.com/api/docs/)
+- [Pexels API-Key erstellen](https://www.pexels.com/api/key/)
 
 ## Berechtigungen
 
@@ -68,6 +171,57 @@ Die abstrakte Klasse `AbstractProvider` bietet bereits:
 - API Caching (24h)
 - Medienpool Import
 - Konfigurationsverwaltung
+
+## Wikimedia Commons Provider
+
+### Überblick
+
+Der **Wikimedia Commons Provider** ermöglicht den direkten Import von freien Medien aus der größten Sammlung freier Inhalte der Welt. Wikimedia Commons ist die zentrale Mediendatenbank aller Wikipedia-Projekte und enthält Millionen von Bildern, SVGs, Audio- und Videodateien unter freien Lizenzen.
+
+### Besondere Features
+
+- ✅ **Kein API-Key erforderlich** - sofort einsatzbereit
+- ✅ **Millionen freie Medien** - Fotos, Grafiken, historische Bilder
+- ✅ **Automatische Copyright-Übernahme** - Autor und Lizenzinfo werden automatisch gesetzt
+- ✅ **Verschiedene Formate** - JPG, PNG, SVG, WebP, PDF
+- ✅ **Direkte URL-Eingabe** - Wikimedia-Links direkt importieren
+- ✅ **Erweiterte Suche** - mit Dateityp-Filtern
+
+### Verwendung
+
+1. **Textsuche:** Gib Suchbegriffe ein (z.B. "Berlin", "cat", "nature")
+2. **URL-Import:** Kopiere Wikimedia-URLs direkt in das Suchfeld
+3. **Dateityp-Filter:** Wähle zwischen "Alle Dateien" oder "Nur Bilder"
+4. **Copyright-Übernahme:** Aktiviere die automatische Übernahme von Autoren- und Lizenzinformationen
+
+### Rechtliche Sicherheit
+
+Alle Dateien auf Wikimedia Commons stehen unter **freien Lizenzen**:
+- **Creative Commons** (CC BY, CC BY-SA, CC0)
+- **Public Domain** (gemeinfrei)
+- **GNU Free Documentation License**
+
+Das AddOn übernimmt automatisch die korrekte **Quellenangabe** und **Lizenzinformation**, um rechtliche Anforderungen zu erfüllen.
+
+### Beispiele für verfügbare Inhalte
+
+- **Fotos:** Natur, Städte, Architektur, Personen, Tiere
+- **Historische Bilder:** Gemälde, historische Fotos, Karten
+- **SVG-Grafiken:** Logos, Icons, Diagramme, Flaggen
+- **Dokumente:** Bücher, Karten, wissenschaftliche Arbeiten
+
+### User-Agent Konfiguration
+
+Wikimedia empfiehlt die Angabe eines **User-Agent** für bessere API-Performance:
+
+**Format:** `[Website/Projekt] [Tool]/[Version] ([Kontakt-Email])`
+
+**Beispiele:**
+```
+MeineWebsite.de AssetImport/1.0 (kontakt@meinewebsite.de)
+Firma-XY REDAXO-Import/1.0 (admin@firma-xy.de)
+MyProject.com MediaBot/1.0 (support@myproject.com)
+```
 
 
 ## Beispiel Provider für File import aus lokalem Ordner

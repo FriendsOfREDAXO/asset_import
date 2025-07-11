@@ -47,6 +47,14 @@ asset_import_provider_pexels_apikey_notice = API-Key von Pexels.com  |  https://
 asset_import_provider_pexels_copyright_format = Copyright-Format
 asset_import_provider_pexels_copyright_format_notice = Wähle das Format für die Copyright-Informationen
 
+# Wikimedia Commons Provider
+asset_import_provider_wikimedia_useragent = User-Agent
+asset_import_provider_wikimedia_useragent_notice = User-Agent für API-Anfragen (z.B. "MeineWebsite.de AssetImport/1.0 (kontakt@meinewebsite.de)"). Wikimedia empfiehlt eine eindeutige Kennung mit Kontaktdaten für bessere API-Performance.
+asset_import_provider_wikimedia_file_types = Dateitypen
+asset_import_provider_wikimedia_file_types_notice = Welche Dateitypen sollen durchsucht werden?
+asset_import_provider_set_copyright = Copyright-Info setzen
+asset_import_provider_set_copyright_notice = Sollen Copyright-Informationen in der Medienbeschreibung gespeichert werden?
+
 # Copyright Formate
 asset_import_provider_copyright_fields = Copyright-Felder
 asset_import_provider_copyright_notice = In welchem Format sollen die Copyrights gespeichert werden
