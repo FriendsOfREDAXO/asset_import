@@ -6,17 +6,12 @@ use Exception;
 use FriendsOfRedaxo\AssetImport\Asset\AbstractProvider;
 use Psr\Log\LogLevel;
 use rex;
-use rex_addon;
 use rex_exception;
-use rex_i18n;
 use rex_logger;
 use rex_media;
-use rex_media_service;
-use rex_path;
 use rex_sql;
 
 use function array_merge;
-use function array_slice;
 use function count;
 use function curl_close;
 use function curl_errno;
@@ -26,28 +21,21 @@ use function curl_getinfo;
 use function curl_init;
 use function curl_setopt;
 use function implode;
-use function is_array;
+use function in_array;
 use function json_decode;
 use function md5;
-use function parse_url;
-use function pathinfo;
 use function preg_match;
-use function sprintf;
 use function str_replace;
-use function strpos;
-use function strtolower;
-use function urlencode;
 
 use const CURLINFO_HTTP_CODE;
 use const CURLOPT_FOLLOWLOCATION;
 use const CURLOPT_HEADER;
-use const CURLOPT_HTTPHEADER;
 use const CURLOPT_RETURNTRANSFER;
 use const CURLOPT_SSL_VERIFYPEER;
 use const CURLOPT_TIMEOUT;
 use const CURLOPT_URL;
 use const CURLOPT_USERAGENT;
-use const PATHINFO_EXTENSION;
+use const JSON_ERROR_NONE;
 
 class WikimediaProvider extends AbstractProvider
 {
@@ -162,7 +150,7 @@ class WikimediaProvider extends AbstractProvider
             }
 
             // Hole detaillierte Informationen für die gefundenen Dateien
-            $titles = array_map(function ($result) {
+            $titles = array_map(static function ($result) {
                 return $result['title'];
             }, $searchResults);
 
@@ -202,8 +190,8 @@ class WikimediaProvider extends AbstractProvider
 
     protected function isWikimediaUrl(string $url): bool
     {
-        return strpos($url, 'commons.wikimedia.org') !== false ||
-               strpos($url, 'upload.wikimedia.org') !== false;
+        return str_contains($url, 'commons.wikimedia.org')
+               || str_contains($url, 'upload.wikimedia.org');
     }
 
     protected function handleWikimediaUrl(string $url): array
@@ -268,7 +256,7 @@ class WikimediaProvider extends AbstractProvider
         $searchQuery = $query;
 
         // Filetype-Filter für spezifische Bildformate
-        if ($fileType === 'images') {
+        if ('images' === $fileType) {
             // Nur die gewünschten Formate: JPG, PNG, SVG, WebP
             $searchQuery .= ' (filetype:jpg OR filetype:jpeg OR filetype:png OR filetype:svg OR filetype:webp)';
         }
@@ -387,7 +375,7 @@ class WikimediaProvider extends AbstractProvider
 
             case 'author_wikimedia':
             default:
-                if ($author && $author !== 'Unknown') {
+                if ($author && 'Unknown' !== $author) {
                     return $author . ' / Wikimedia Commons';
                 }
                 return 'Wikimedia Commons';
@@ -417,7 +405,7 @@ class WikimediaProvider extends AbstractProvider
 
         foreach ($thumbnailSizes as $sizeName => $maxWidth) {
             if ($width > $maxWidth) {
-                $thumbHeight = intval(($height * $maxWidth) / $width);
+                $thumbHeight = (int) (($height * $maxWidth) / $width);
                 $thumbUrl = $thumbBaseUrl . '/' . $maxWidth . 'px-' . basename($originalUrl);
                 $sizes[$sizeName] = [
                     'url' => $thumbUrl,
@@ -435,7 +423,7 @@ class WikimediaProvider extends AbstractProvider
 
     protected function determineAssetType(string $mimeType): string
     {
-        if (strpos($mimeType, 'image/') === 0) {
+        if (str_starts_with($mimeType, 'image/')) {
             return 'image';
         }
 
@@ -467,14 +455,14 @@ class WikimediaProvider extends AbstractProvider
 
         curl_close($curl);
 
-        if ($httpCode !== 200) {
+        if (200 !== $httpCode) {
             throw new rex_exception('HTTP Error: ' . $httpCode);
         }
 
         // Dekodiere JSON-Antwort
         $decodedResponse = json_decode($response, true);
-        
-        if (json_last_error() !== JSON_ERROR_NONE) {
+
+        if (JSON_ERROR_NONE !== json_last_error()) {
             rex_logger::factory()->log(LogLevel::ERROR, 'Wikimedia API JSON Decode Error: ' . json_last_error_msg() . ' - URL: ' . $url);
             throw new rex_exception('JSON Decode Error: ' . json_last_error_msg());
         }
@@ -497,15 +485,15 @@ class WikimediaProvider extends AbstractProvider
         try {
             // Bereinige den Dateinamen für REDAXO Media
             $cleanFilename = $this->sanitizeMediaFilename($filename);
-            
+
             // Nutze die download-Methode der Parent-Klasse mit bereinigtem Dateinamen
             $success = $this->downloadFile($url, $cleanFilename);
-            
+
             // Copyright setzen, wenn gewünscht und vorhanden
             if ($success && $copyright && $this->shouldSetCopyright()) {
                 // Warte kurz, damit REDAXO die Datei verarbeiten kann
                 usleep(100000); // 0.1 Sekunden
-                
+
                 $media = rex_media::get($cleanFilename);
                 if ($media) {
                     $sql = rex_sql::factory();
@@ -515,7 +503,7 @@ class WikimediaProvider extends AbstractProvider
                     $sql->update();
                 }
             }
-            
+
             return $success;
         } catch (Exception $e) {
             rex_logger::logException($e);
@@ -524,7 +512,7 @@ class WikimediaProvider extends AbstractProvider
     }
 
     /**
-     * Bereinigt Dateinamen für REDAXO Media
+     * Bereinigt Dateinamen für REDAXO Media.
      */
     protected function sanitizeMediaFilename(string $filename): string
     {
@@ -534,12 +522,12 @@ class WikimediaProvider extends AbstractProvider
         $cleaned = preg_replace('/_+/', '_', $cleaned);
         // Führende/abschließende Unterstriche entfernen
         $cleaned = trim($cleaned, '_');
-        
+
         return $cleaned;
     }
 
     /**
-     * Prüft, ob Copyright-Informationen gesetzt werden sollen
+     * Prüft, ob Copyright-Informationen gesetzt werden sollen.
      */
     protected function shouldSetCopyright(): bool
     {
@@ -561,7 +549,7 @@ class WikimediaProvider extends AbstractProvider
         $allowedTypes = [
             // Nur die gewünschten Bildformate
             'image/jpeg',
-            'image/png', 
+            'image/png',
             'image/svg+xml',
             'image/webp',
             // Optional: PDF-Dokumente
