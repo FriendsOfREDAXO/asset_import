@@ -39,7 +39,7 @@ if (rex::isBackend() && rex::getUser()) {
         // Add CSS and JS files
         rex_view::addCssFile(rex_addon::get('asset_import')->getAssetsUrl('asset_import.css'));
         rex_view::addJsFile(rex_addon::get('asset_import')->getAssetsUrl('asset_import.js'));
-        
+
         // Add Direct Import JS for direct page
         if ('asset_import/direct' === rex_be_controller::getCurrentPage()) {
             rex_view::addJsFile(rex_addon::get('asset_import')->getAssetsUrl('direct_import.js'));
