@@ -3,14 +3,14 @@ version: '1.1.2'
 author: Friends Of REDAXO
 supportpage: https://github.com/FriendsOfREDAXO/asset_import
 
+
 requires:
     redaxo: '^5.18.0'
     php:
         version: '>=8.2'
 
-perm: asset_import[]
-
 page:
+    perm: asset_import[]
     title: 'translate:asset_import_title'
     icon: rex-icon fa-cloud-download
     subpages:
