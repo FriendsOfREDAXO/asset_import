@@ -70,3 +70,26 @@ asset_import_copyright_source = Quelle
 # Lightbox
 asset_import_lightbox_close = Schließen
 asset_import_lightbox_size = Größe
+
+# Direct Import
+asset_import_direct_title = Direkter URL-Import
+asset_import_direct_info_title = Direkter Import von URLs
+asset_import_direct_info_text = Importieren Sie Medien direkt über eine URL. Diese Funktion ist ideal für schnelle Imports ohne Provider-Konfiguration.
+asset_import_direct_info_formats = Unterstützte Formate: JPG, PNG, GIF, WebP, MP4, WebM, OGG
+asset_import_direct_info_copyright = Copyright-Informationen können frei eingegeben werden
+asset_import_direct_info_filename = Dateiname wird automatisch vorgeschlagen, kann aber angepasst werden
+asset_import_direct_url_import = URL-Import
+asset_import_direct_url = URL zur Mediendatei
+asset_import_direct_preview = Vorschau
+asset_import_direct_filename = Dateiname
+asset_import_direct_filename_placeholder = z.B. mein-bild.jpg
+asset_import_direct_copyright = Copyright-Information
+asset_import_direct_copyright_placeholder = z.B. © 2024 Fotograf Name
+asset_import_direct_import_btn = Importieren
+asset_import_direct_reset = Zurücksetzen
+asset_import_direct_file_type = Dateityp
+asset_import_direct_file_size = Dateigröße
+asset_import_direct_url_required = Bitte geben Sie eine URL ein
+asset_import_direct_fields_required = URL und Dateiname sind erforderlich
+asset_import_direct_preview_success = Vorschau erfolgreich geladen
+asset_import_direct_import_success = Datei erfolgreich importiert

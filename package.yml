@@ -1,5 +1,5 @@
 package: asset_import
-version: '1.2.0'
+version: '1.3.0'
 author: Friends Of REDAXO
 supportpage: https://github.com/FriendsOfREDAXO/asset_import
 
@@ -16,6 +16,8 @@ page:
     subpages:
         main: 
             title: 'translate:asset_import_media'
+        direct:
+            title: 'translate:asset_import_direct_title'
         config:
             title: 'translate:asset_import_settings'
             perm: admin[]

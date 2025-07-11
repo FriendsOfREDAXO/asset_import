@@ -34,10 +34,16 @@ if (rex::isBackend() && rex::getUser()) {
 
     // Register assets for the asset_import pages
     if ('asset_import/main' === rex_be_controller::getCurrentPage()
-        || 'asset_import/config' === rex_be_controller::getCurrentPage()) {
+        || 'asset_import/config' === rex_be_controller::getCurrentPage()
+        || 'asset_import/direct' === rex_be_controller::getCurrentPage()) {
         // Add CSS and JS files
         rex_view::addCssFile(rex_addon::get('asset_import')->getAssetsUrl('asset_import.css'));
         rex_view::addJsFile(rex_addon::get('asset_import')->getAssetsUrl('asset_import.js'));
+        
+        // Add Direct Import JS for direct page
+        if ('asset_import/direct' === rex_be_controller::getCurrentPage()) {
+            rex_view::addJsFile(rex_addon::get('asset_import')->getAssetsUrl('direct_import.js'));
+        }
 
         // Add Javascript translations
         $translations = [
@@ -50,6 +56,13 @@ if (rex::isBackend() && rex::getUser()) {
             'loading' => rex_i18n::msg('asset_import_loading'),
             'results_found' => rex_i18n::msg('asset_import_results'),
             'no_results' => rex_i18n::msg('asset_import_no_results'),
+            // Direct Import translations
+            'direct_url_required' => rex_i18n::msg('asset_import_direct_url_required'),
+            'direct_fields_required' => rex_i18n::msg('asset_import_direct_fields_required'),
+            'direct_preview_success' => rex_i18n::msg('asset_import_direct_preview_success'),
+            'direct_import_success' => rex_i18n::msg('asset_import_direct_import_success'),
+            'direct_file_type' => rex_i18n::msg('asset_import_direct_file_type'),
+            'direct_file_size' => rex_i18n::msg('asset_import_direct_file_size'),
         ];
 
         // Add translations to Javascript
