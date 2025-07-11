@@ -20,8 +20,6 @@ use rex_media;
 use rex_response;
 use rex_view;
 
-use function count;
-
 // Initialize CSRF protection
 if (rex_backend_login::hasSession()) {
     rex_csrf_token::factory('asset_import');
