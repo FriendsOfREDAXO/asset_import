@@ -4,6 +4,7 @@ asset_import_settings = Settings
 
 # Permissions
 perm_general_asset_import[] = Asset Import
+perm_general_asset_import[direct] = Direct URL Import
 
 asset_import_search = Search
 asset_import_search_placeholder = Enter search term...

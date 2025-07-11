@@ -13,6 +13,16 @@ use Exception;
 
 // Handle AJAX requests for direct URL import
 if (rex_request('direct_import_api', 'int', 0)) {
+    // Berechtigung für Direct Import prüfen
+    $user = rex::getUser();
+    if (!$user || !$user->hasPerm('asset_import[direct]')) {
+        rex_response::sendJson([
+            'success' => false, 
+            'error' => 'Keine Berechtigung für Direct URL Import'
+        ]);
+        exit;
+    }
+    
     try {
         $action = rex_request('action', 'string', '');
         

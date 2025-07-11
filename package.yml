@@ -18,6 +18,7 @@ page:
             title: 'translate:asset_import_media'
         direct:
             title: 'translate:asset_import_direct_title'
+            perm: asset_import[direct]
         config:
             title: 'translate:asset_import_settings'
             perm: admin[]
