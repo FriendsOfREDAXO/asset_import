@@ -2,19 +2,27 @@
 
 namespace FriendsOfRedaxo\AssetImport;
 
-use rex;
-use rex_media_service;
-use rex_file;
-use rex_path;
-use rex_media_manager;
-use rex_media;
-use rex_sql;
 use Exception;
+use rex;
+use rex_file;
+use rex_media;
+use rex_media_service;
+use rex_path;
+use rex_sql;
+
+use function count;
+use function in_array;
+use function is_array;
+
+use const FILTER_VALIDATE_URL;
+use const PATHINFO_EXTENSION;
+use const PATHINFO_FILENAME;
+use const PHP_URL_PATH;
 
 class DirectImporter
 {
     /**
-     * Vorschau einer URL generieren
+     * Vorschau einer URL generieren.
      */
     public static function preview(string $url): array
     {
@@ -29,7 +37,7 @@ class DirectImporter
 
         // Header abrufen um Dateityp und Größe zu prüfen
         $headers = @get_headers($url, 1);
-        if ($headers === false) {
+        if (false === $headers) {
             throw new Exception('URL nicht erreichbar');
         }
 
@@ -43,7 +51,7 @@ class DirectImporter
         $contentType = self::getContentType($headers);
         $supportedTypes = [
             'image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp',
-            'video/mp4', 'video/webm', 'video/ogg'
+            'video/mp4', 'video/webm', 'video/ogg',
         ];
 
         if (!in_array($contentType, $supportedTypes)) {
@@ -53,7 +61,7 @@ class DirectImporter
         // Dateiname aus URL extrahieren
         $urlPath = parse_url($url, PHP_URL_PATH);
         $suggestedFilename = basename($urlPath);
-        
+
         // Falls kein Dateiname in URL, einen generieren
         if (empty($suggestedFilename) || !pathinfo($suggestedFilename, PATHINFO_EXTENSION)) {
             $extension = self::getExtensionFromContentType($contentType);
@@ -69,14 +77,14 @@ class DirectImporter
             'file_size' => $fileSize,
             'file_size_formatted' => $fileSize ? self::formatBytes($fileSize) : 'Unbekannt',
             'suggested_filename' => $suggestedFilename,
-            'is_image' => strpos($contentType, 'image/') === 0,
-            'is_video' => strpos($contentType, 'video/') === 0,
-            'preview_url' => $url // Für Bilder kann die Original-URL als Vorschau verwendet werden
+            'is_image' => str_starts_with($contentType, 'image/'),
+            'is_video' => str_starts_with($contentType, 'video/'),
+            'preview_url' => $url, // Für Bilder kann die Original-URL als Vorschau verwendet werden
         ];
     }
 
     /**
-     * Datei von URL importieren
+     * Datei von URL importieren.
      */
     public static function import(string $url, string $filename, string $copyright = '', int $categoryId = 0): bool
     {
@@ -94,11 +102,11 @@ class DirectImporter
 
         // Temporäre Datei herunterladen
         $tempFile = self::downloadFile($url);
-        
+
         try {
             // Verwende REDAXO's Media-Upload Mechanismus
             $success = self::addMediaToPool($tempFile, $filename, $copyright, $categoryId);
-            
+
             if (!$success) {
                 throw new Exception('Fehler beim Hinzufügen zur Mediendatenbank');
             }
@@ -110,7 +118,6 @@ class DirectImporter
             }
 
             return true;
-
         } catch (Exception $e) {
             // Temporäre Datei aufräumen
             if (file_exists($tempFile)) {
@@ -121,7 +128,7 @@ class DirectImporter
     }
 
     /**
-     * Datei zum Medienpool hinzufügen (verwendet REDAXO's rex_media_service)
+     * Datei zum Medienpool hinzufügen (verwendet REDAXO's rex_media_service).
      */
     private static function addMediaToPool(string $tempFile, string $filename, string $copyright, int $categoryId): bool
     {
@@ -140,7 +147,7 @@ class DirectImporter
             // REDAXO's Standard-Media-Service verwenden
             $result = rex_media_service::addMedia($media, true);
 
-            if ($result === false) {
+            if (false === $result) {
                 throw new Exception('rex_media_service::addMedia() hat false zurückgegeben');
             }
 
@@ -157,14 +164,13 @@ class DirectImporter
             }
 
             return true;
-
         } catch (Exception $e) {
             throw new Exception('Media-Pool-Fehler: ' . $e->getMessage());
         }
     }
 
     /**
-     * Datei von URL herunterladen
+     * Datei von URL herunterladen.
      */
     private static function downloadFile(string $url): string
     {
@@ -175,19 +181,19 @@ class DirectImporter
                 'method' => 'GET',
                 'header' => [
                     'User-Agent: REDAXO Asset Import/1.0',
-                    'Accept: */*'
+                    'Accept: */*',
                 ],
-                'timeout' => 30
-            ]
+                'timeout' => 30,
+            ],
         ]);
 
         $content = @file_get_contents($url, false, $context);
-        
-        if ($content === false) {
+
+        if (false === $content) {
             throw new Exception('Fehler beim Herunterladen der Datei');
         }
 
-        if (rex_file::put($tempFile, $content) === false) {
+        if (false === rex_file::put($tempFile, $content)) {
             throw new Exception('Fehler beim Speichern der temporären Datei');
         }
 
@@ -195,48 +201,48 @@ class DirectImporter
     }
 
     /**
-     * Status Code aus Headers extrahieren
+     * Status Code aus Headers extrahieren.
      */
     private static function getStatusCode(array $headers): int
     {
         $statusLine = $headers[0];
         if (preg_match('/HTTP\/\d\.\d\s+(\d+)/', $statusLine, $matches)) {
-            return (int)$matches[1];
+            return (int) $matches[1];
         }
         return 0;
     }
 
     /**
-     * Content-Type aus Headers extrahieren
+     * Content-Type aus Headers extrahieren.
      */
     private static function getContentType(array $headers): string
     {
         $contentType = $headers['Content-Type'] ?? $headers['content-type'] ?? '';
-        
+
         if (is_array($contentType)) {
             $contentType = $contentType[0];
         }
-        
+
         // Nur den Haupttyp nehmen (ohne charset etc.)
         return strtok($contentType, ';');
     }
 
     /**
-     * Content-Length aus Headers extrahieren
+     * Content-Length aus Headers extrahieren.
      */
     private static function getContentLength(array $headers): ?int
     {
         $contentLength = $headers['Content-Length'] ?? $headers['content-length'] ?? null;
-        
+
         if (is_array($contentLength)) {
             $contentLength = $contentLength[0];
         }
-        
-        return $contentLength ? (int)$contentLength : null;
+
+        return $contentLength ? (int) $contentLength : null;
     }
 
     /**
-     * Dateiendung basierend auf Content-Type ermitteln
+     * Dateiendung basierend auf Content-Type ermitteln.
      */
     private static function getExtensionFromContentType(string $contentType): string
     {
@@ -248,31 +254,31 @@ class DirectImporter
             'image/webp' => 'webp',
             'video/mp4' => 'mp4',
             'video/webm' => 'webm',
-            'video/ogg' => 'ogg'
+            'video/ogg' => 'ogg',
         ];
 
         return $extensions[$contentType] ?? 'bin';
     }
 
     /**
-     * Dateiname bereinigen
+     * Dateiname bereinigen.
      */
     private static function sanitizeFilename(string $filename): string
     {
         // Gefährliche Zeichen entfernen
         $filename = preg_replace('/[^\w\-_\.]/', '_', $filename);
-        
+
         // Mehrfache Unterstriche reduzieren
         $filename = preg_replace('/_+/', '_', $filename);
-        
+
         // Führende/Nachfolgende Unterstriche entfernen
         $filename = trim($filename, '_');
-        
+
         return $filename;
     }
 
     /**
-     * Prüfen ob es sich um ein Bild handelt
+     * Prüfen ob es sich um ein Bild handelt.
      */
     private static function isImage(string $filename): bool
     {
@@ -281,7 +287,7 @@ class DirectImporter
     }
 
     /**
-     * Bytes formatieren
+     * Bytes formatieren.
      */
     private static function formatBytes(int $bytes): string
     {
@@ -289,9 +295,9 @@ class DirectImporter
         $bytes = max($bytes, 0);
         $pow = floor(($bytes ? log($bytes) : 0) / log(1024));
         $pow = min($pow, count($units) - 1);
-        
-        $bytes /= pow(1024, $pow);
-        
+
+        $bytes /= 1024 ** $pow;
+
         return round($bytes, 2) . ' ' . $units[$pow];
     }
 }

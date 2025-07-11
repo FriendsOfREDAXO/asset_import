@@ -2,44 +2,42 @@
 
 namespace FriendsOfRedaxo\AssetImport;
 
+use Exception;
 use rex;
 use rex_fragment;
 use rex_i18n;
 use rex_media_category_select;
-use rex_view;
 use rex_response;
-use rex_request;
-use Exception;
 
 // Handle AJAX requests for direct URL import
 if (rex_request('direct_import_api', 'int', 0)) {
     try {
         $action = rex_request('action', 'string', '');
-        
+
         switch ($action) {
             case 'preview':
                 $url = rex_request('url', 'string', '');
                 $result = DirectImporter::preview($url);
                 rex_response::sendJson(['success' => true, 'data' => $result]);
                 break;
-                
+
             case 'import':
                 $url = rex_request('url', 'string', '');
                 $filename = rex_request('filename', 'string', '');
                 $copyright = rex_request('copyright', 'string', '');
                 $categoryId = rex_request('category_id', 'int', 0);
-                
+
                 $result = DirectImporter::import($url, $filename, $copyright, $categoryId);
                 rex_response::sendJson(['success' => $result]);
                 break;
-                
+
             default:
                 throw new Exception('Invalid action');
         }
     } catch (Exception $e) {
         rex_response::sendJson([
-            'success' => false, 
-            'error' => $e->getMessage()
+            'success' => false,
+            'error' => $e->getMessage(),
         ]);
     }
     exit;
@@ -82,7 +80,7 @@ $content = '
             </div>
         </div>
     </div>
-    
+
     <div class="row">
         <!-- Kategorie-Auswahl -->
         <div class="col-sm-4">
@@ -109,10 +107,10 @@ $content = '
                         <div class="form-group">
                             <label for="direct-import-url">' . rex_i18n::msg('asset_import_direct_url') . '</label>
                             <div class="input-group">
-                                <input type="url" 
-                                       class="form-control" 
-                                       id="direct-import-url" 
-                                       name="url" 
+                                <input type="url"
+                                       class="form-control"
+                                       id="direct-import-url"
+                                       name="url"
                                        placeholder="https://example.com/image.jpg"
                                        required>
                                 <span class="input-group-btn">
@@ -123,28 +121,28 @@ $content = '
                                 </span>
                             </div>
                         </div>
-                        
+
                         <div id="direct-import-preview-container" style="display: none;">
                             <div class="form-group">
                                 <label for="direct-import-filename">' . rex_i18n::msg('asset_import_direct_filename') . '</label>
-                                <input type="text" 
-                                       class="form-control" 
-                                       id="direct-import-filename" 
-                                       name="filename" 
+                                <input type="text"
+                                       class="form-control"
+                                       id="direct-import-filename"
+                                       name="filename"
                                        placeholder="' . rex_i18n::msg('asset_import_direct_filename_placeholder') . '">
                             </div>
-                            
+
                             <div class="form-group">
                                 <label for="direct-import-copyright">' . rex_i18n::msg('asset_import_direct_copyright') . '</label>
-                                <input type="text" 
-                                       class="form-control" 
-                                       id="direct-import-copyright" 
-                                       name="copyright" 
+                                <input type="text"
+                                       class="form-control"
+                                       id="direct-import-copyright"
+                                       name="copyright"
                                        placeholder="' . rex_i18n::msg('asset_import_direct_copyright_placeholder') . '">
                             </div>
-                            
+
                             <div id="direct-import-preview-area"></div>
-                            
+
                             <div class="form-actions">
                                 <button type="submit" class="btn btn-primary" id="direct-import-submit">
                                     <i class="rex-icon fa-download"></i>
@@ -155,7 +153,7 @@ $content = '
                                     ' . rex_i18n::msg('asset_import_direct_reset') . '
                                 </button>
                             </div>
-                            
+
                             <div class="progress" id="direct-import-progress" style="display: none;">
                                 <div class="progress-bar progress-bar-striped active" role="progressbar" style="width: 100%">
                                     <i class="rex-icon fa-download"></i> ' . rex_i18n::msg('asset_import_importing') . '
