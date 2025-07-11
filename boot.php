@@ -93,7 +93,6 @@ if (rex::isBackend() && rex::getUser()) {
                     $filename = rex_request('filename', 'string');
                     $copyright = rex_request('copyright', 'string', '');
 
-                    // Log import request
                     rex_logger::factory()->log(LogLevel::INFO,
                         'Starting import request',
                         [
@@ -112,7 +111,6 @@ if (rex::isBackend() && rex::getUser()) {
                     // Import file
                     $result = $providerInstance->import($url, $filename, $copyright);
 
-                    // Log import result
                     rex_logger::factory()->log(LogLevel::INFO,
                         'Import request completed',
                         [
@@ -135,7 +133,6 @@ if (rex::isBackend() && rex::getUser()) {
                     throw new rex_exception('Invalid action');
             }
         } catch (Exception $e) {
-            // Log error
             rex_logger::factory()->log(LogLevel::ERROR,
                 'API request failed: ' . $e->getMessage(),
                 [

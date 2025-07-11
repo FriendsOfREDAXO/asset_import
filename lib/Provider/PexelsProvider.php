@@ -256,7 +256,6 @@ class PexelsProvider extends AbstractProvider
 
     protected function formatCopyright(array $item): string
     {
-        // Log copyright formatting
         $copyrightFields = $this->config['copyright_fields'] ?? 'photographer_pexels';
         $parts = [];
 
@@ -279,11 +278,6 @@ class PexelsProvider extends AbstractProvider
         }
 
         $copyright = implode(' / ', array_filter($parts));
-
-        // Log final copyright string
-        rex_logger::factory()->log(LogLevel::DEBUG, 'Generated copyright string', [
-            'copyright' => $copyright,
-        ]);
 
         return $copyright;
     }

@@ -197,13 +197,6 @@ class PixabayProvider extends AbstractProvider
 
     protected function formatItem(array $item, string $type): array
     {
-        // Log item for debugging
-        rex_logger::factory()->log(LogLevel::DEBUG, 'Formatting Pixabay item', [
-            'type' => $type,
-            'item_id' => $item['id'],
-            'copyright_fields' => $this->config['copyright_fields'] ?? 'default',
-        ]);
-
         $copyright = $this->formatCopyright($item);
 
         if ('video' === $type) {
@@ -255,13 +248,6 @@ class PixabayProvider extends AbstractProvider
 
     protected function formatCopyright(array $item): string
     {
-        // Log copyright formatting
-        rex_logger::factory()->log(LogLevel::DEBUG, 'Formatting copyright', [
-            'item_id' => $item['id'],
-            'copyright_fields' => $this->config['copyright_fields'] ?? 'default',
-            'user' => $item['user'] ?? 'unknown',
-        ]);
-
         $copyrightFields = $this->config['copyright_fields'] ?? 'user_pixabay';
         $parts = [];
 
@@ -284,11 +270,6 @@ class PixabayProvider extends AbstractProvider
         }
 
         $copyright = implode(' / ', array_filter($parts));
-
-        // Log final copyright string
-        rex_logger::factory()->log(LogLevel::DEBUG, 'Generated copyright string', [
-            'copyright' => $copyright,
-        ]);
 
         return $copyright;
     }
