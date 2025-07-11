@@ -82,28 +82,7 @@ if (rex::isBackend() && rex::getUser()) {
                     $page = rex_request('page', 'integer', 1);
                     $options = rex_request('options', 'array', []);
 
-                    // Log search request
-                    rex_logger::factory()->log(LogLevel::DEBUG,
-                        'Processing search request',
-                        [
-                            'provider' => $provider,
-                            'query' => $query,
-                            'page' => $page,
-                            'options' => $options,
-                        ],
-                    );
-
                     $results = $providerInstance->search($query, $page, $options);
-
-                    // Log search results
-                    rex_logger::factory()->log(LogLevel::DEBUG,
-                        'Search request completed',
-                        [
-                            'provider' => $provider,
-                            'total_results' => $results['total'] ?? 0,
-                            'items_count' => count($results['items'] ?? []),
-                        ],
-                    );
 
                     rex_response::sendJson(['success' => true, 'data' => $results]);
                     break;
@@ -146,16 +125,6 @@ if (rex::isBackend() && rex::getUser()) {
                     // Verify media and copyright after import
                     if ($result) {
                         $media = rex_media::get($filename);
-                        if ($media) {
-                            rex_logger::factory()->log(LogLevel::DEBUG,
-                                'Verifying imported media',
-                                [
-                                    'filename' => $filename,
-                                    'copyright' => $media->getValue('med_copyright'),
-                                    'expected_copyright' => $copyright,
-                                ],
-                            );
-                        }
                     }
 
                     // Send response
