@@ -40,6 +40,32 @@ $(document).on('rex:ready', function() {
                 
                 this.import(url, filename, copyright, btn);
             });
+            
+            // Lightbox Events
+            $(document).on('click', '.asset-import-preview', (e) => {
+                e.preventDefault();
+                const item = $(e.currentTarget).closest('.asset-import-item');
+                this.openLightbox(item);
+            });
+            
+            // Lightbox schließen
+            $(document).on('click', '.asset-import-lightbox', (e) => {
+                if (e.target === e.currentTarget) {
+                    this.closeLightbox();
+                }
+            });
+            
+            $(document).on('click', '.asset-import-lightbox-close', (e) => {
+                e.preventDefault();
+                this.closeLightbox();
+            });
+            
+            // ESC-Taste zum Schließen der Lightbox
+            $(document).on('keyup', (e) => {
+                if (e.keyCode === 27) { // ESC
+                    this.closeLightbox();
+                }
+            });
         },
         
         resetResults: function() {
@@ -247,6 +273,109 @@ $(document).on('rex:ready', function() {
                 .replace(/>/g, "&gt;")
                 .replace(/"/g, "&quot;")
                 .replace(/'/g, "&#039;");
+        },
+        
+        openLightbox: function(item) {
+            const title = item.find('.asset-import-title').text();
+            const selectSize = item.find('.asset-import-size-select');
+            const selectedOption = selectSize.find('option:selected');
+            const copyright = item.data('copyright') || '';
+            
+            // Versuche die beste verfügbare Auflösung zu finden
+            let bestSize = this.getBestAvailableSize(item);
+            let mediaUrl = bestSize.url;
+            let mediaType = bestSize.type;
+            
+            // Bestimme den Media-Typ basierend auf der Dateiendung falls nicht verfügbar
+            if (!mediaType) {
+                const extension = mediaUrl.split('.').pop().toLowerCase();
+                mediaType = ['mp4', 'webm', 'ogg', 'mov', 'avi'].includes(extension) ? 'video' : 'image';
+            }
+            
+            // Erstelle Lightbox HTML
+            const lightboxHtml = `
+                <div class="asset-import-lightbox">
+                    <div class="asset-import-lightbox-content">
+                        <button class="asset-import-lightbox-close" title="Schließen">×</button>
+                        ${mediaType === 'video' ? `
+                            <video class="asset-import-lightbox-media" controls>
+                                <source src="${mediaUrl}" type="video/mp4">
+                                Ihr Browser unterstützt kein HTML5 Video.
+                            </video>
+                        ` : `
+                            <img class="asset-import-lightbox-media" src="${mediaUrl}" alt="${this.escapeHtml(title)}">
+                        `}
+                        <div class="asset-import-lightbox-info">
+                            <div class="asset-import-lightbox-title">${this.escapeHtml(title)}</div>
+                            <div class="asset-import-lightbox-meta">
+                                Größe: ${bestSize.label}
+                                ${copyright ? ' | © ' + this.escapeHtml(copyright) : ''}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Entferne vorhandene Lightbox falls vorhanden
+            $('.asset-import-lightbox').remove();
+            
+            // Füge neue Lightbox hinzu
+            $('body').append(lightboxHtml).addClass('lightbox-active');
+            
+            // Trigger reflow um sicherzustellen, dass CSS angewendet wird
+            const lightbox = $('.asset-import-lightbox')[0];
+            lightbox.offsetHeight; // Force reflow
+            
+            // Zeige Lightbox mit Animation mit kleiner Verzögerung
+            requestAnimationFrame(() => {
+                $('.asset-import-lightbox').addClass('active');
+            });
+        },
+        
+        closeLightbox: function() {
+            $('.asset-import-lightbox').removeClass('active');
+            $('body').removeClass('lightbox-active');
+            
+            setTimeout(() => {
+                $('.asset-import-lightbox').remove();
+            }, 400); // Angepasst an die längere Animationsdauer
+        },
+        
+        getBestAvailableSize: function(item) {
+            const sizeSelect = item.find('.asset-import-size-select');
+            const options = sizeSelect.find('option');
+            
+            // Prioritätsliste für die beste Qualität
+            const sizePriority = ['large', 'original', 'medium', 'small', 'tiny'];
+            
+            let bestOption = null;
+            let bestPriority = -1;
+            
+            options.each(function() {
+                const option = $(this);
+                const sizeKey = option.val();
+                const priority = sizePriority.indexOf(sizeKey);
+                
+                if (priority !== -1 && (bestPriority === -1 || priority < bestPriority)) {
+                    bestOption = option;
+                    bestPriority = priority;
+                }
+            });
+            
+            // Falls keine priorisierte Größe gefunden wurde, nimm die erste verfügbare
+            if (!bestOption) {
+                bestOption = options.first();
+            }
+            
+            // Bestimme den Typ basierend auf dem ursprünglichen Item
+            const preview = item.find('.asset-import-preview');
+            const isVideo = preview.find('video').length > 0;
+            
+            return {
+                url: bestOption.data('url'),
+                label: bestOption.text(),
+                type: isVideo ? 'video' : 'image'
+            };
         }
     };
     

@@ -114,7 +114,9 @@ $content .= '
             </div>
         </div>
     </div>
-</div>';
+</div>
+
+<!-- Lightbox Container wird dynamisch hinzugefügt -->';
 
 $fragment = new rex_fragment();
 $fragment->setVar('class', 'edit', false);

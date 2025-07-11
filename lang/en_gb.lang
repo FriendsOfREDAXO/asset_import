@@ -64,3 +64,7 @@ asset_import_copyright_photographer = Photographer
 asset_import_copyright_author = Author
 asset_import_copyright_license = License
 asset_import_copyright_source = Source
+
+# Lightbox
+asset_import_lightbox_close = Close
+asset_import_lightbox_size = Size
